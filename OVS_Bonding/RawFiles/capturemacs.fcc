@@ -1,0 +1,68 @@
+variant: fcos
+version: 1.1.0
+
+storage:
+  files:
+    - path: /etc/systemd/network/99-default.link
+      mode: 420
+      contents:
+        inline: |
+          [Link]
+          NamePolicy=mac
+          MACAddressPolicy=persistent
+    - path: /etc/NetworkManager/conf.d/10-dhcp-config.conf
+      mode: 420
+      contents:
+        inline: |
+          [main]
+          no-auto-default=*
+          dhcp=dhclient
+    - path: /usr/local/bin/capture-macs
+      mode: 0755
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+          set -ex
+          echo "Processing MAC addresses"
+          cmdline=( $(</proc/cmdline) )
+          karg() {
+              local name="$1" value="${2:-}"
+              for arg in "${cmdline[@]}"; do
+                  if [[ "${arg%%=*}" == "${name}" ]]; then
+                      value="${arg#*=}"
+                  fi
+              done
+              echo "${value}"
+          }
+          device="$(karg coreos.inst.install_dev)"
+          if [[ -z $device ]]; then
+              echo "Install device not specified."
+              exit 1
+          fi
+          device="/dev/${device##/dev/}" 
+          udevadm settle      
+          macs="$(karg macAddressList)"
+          if [[ -z $macs ]]; then
+            echo "No MAC addresses specified."
+            exit 1
+          fi
+          export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
+          export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
+          mount "$device"1  /var/mnt
+          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /var/mnt/mac_addresses
+          umount /var/mnt
+systemd:
+  units:
+    - name: capture-macs.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Capture MAC address from kargs
+        After=coreos-installer.service
+        Before=coreos-installer.target
+        ConditionKernelCommandLine=custom-config
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/capture-macs
+        [Install]
+        RequiredBy=coreos-installer.target
