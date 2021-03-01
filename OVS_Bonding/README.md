@@ -5,7 +5,7 @@ This guide explaines how to bond specific nics during the initial installation w
 
 ## Importent
 - All Rew Files and scripts are located in the RewFiles folder 
-- Note: This Guide is aiming for installation using PXE server
+- This Guide is aiming for installation using PXE server
 <br>
 
 ## Prerequisits
