@@ -4,16 +4,15 @@
 This guide explains how to bond specific NICs during the initial OpenShift installation with OVS and supplies the Ignition and scripts to achieve this.
 
 ## Important
-- All raw files and scripts are located in the RewFiles folder.
+- All raw files and scripts are located in the RawFiles folder.
 - This guide describes the customisations needed for installation when using a PXE server.
 <br>
 
 ## Prerequisites
-- PXE server with ability to see kernel arguments.
+- PXE server with ability to set kernel arguments.
 - Web accessible location(HTTP only) to upload the <i> capturemacs.ign </i> file .
 
 ## Usage  
-<br>
 
 ### <U>1. Adding parameters to PXE server </u>
 Key   |  Type | Value | Exmaple |Discription
