@@ -34,12 +34,6 @@ storage:
               done
               echo "${value}"
           }
-          device="$(karg coreos.inst.install_dev)"
-          if [[ -z $device ]]; then
-              echo "Install device not specified."
-              exit 1
-          fi
-          device="/dev/${device##/dev/}" 
           udevadm settle      
           macs="$(karg macAddressList)"
           if [[ -z $macs ]]; then
@@ -48,7 +42,7 @@ storage:
           fi
           export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
           export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
-          mount "$device"1  /boot
+          mount "/dev/disk/by-label/boot" /boot
           echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
 systemd:
   units:

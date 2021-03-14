@@ -18,7 +18,6 @@ Key   |  Type | Value | Exmaple |Discription
 ---   | --- | --- | --- | --- |
 ignition.config.url  | String | http://{location reachable to PXE and remote VM in order to get the ignition file}/```capturemacs.ign``` custom-config | ignition.config.url=http://my.web.server.redhat.com/```capturemacs.ign``` custom-config | This parameter is used to allow the server to load an extra ignition file which captures the MAC addresses and saves them into a file for later use in  machine config.
 macAddressList | String | List of MAC address should be set per host In the following order: <br> 1. Primary NIC <br> 2. Secondary NIC <br> 3. All the rest (optional)| 00:01:02:03:04:05,06:07:08:09:10:11 ... | This will be the list of MAC addresses which exist on the host and will be grabbed by the ignition file.
-coreos-dev | String | The type of block device to install the system to | coreos-dev=/dev/<u>sda</u> | The used to set the block device on the system to install to.
 <br>
 
 ### 2. Prepare the files
@@ -33,7 +32,6 @@ coreos-dev | String | The type of block device to install the system to | coreos
 
 ### Optioanl - AllInOne
 - ```allInOne.ign``` file is also an option that can be used to get the mac addresses and set the nic bonding it includes both ```capturemacs.ign``` and ```96-configure-ovs-bonding.yaml``` in one ignition file.
-<br>
 To use this file follow the [Prerequisites](#prerequisites) and the [Usage](#usage) section with the ```allInOne.ign``` file.
 
 
