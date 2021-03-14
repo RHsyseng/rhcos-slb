@@ -1,4 +1,4 @@
-# <u>Setting up network bonding on specific interfaces during the ignition process</u>
+# Setting up network bonding on specific interfaces during the ignition process
 
 ## Overview 
 This guide explains how to bond specific NICs during the initial OpenShift installation with OVS and supplies the Ignition and scripts to achieve this.
@@ -13,7 +13,7 @@ This guide explains how to bond specific NICs during the initial OpenShift insta
 
 ## Usage  
 
-### <U>1. Adding parameters to PXE server </u>
+### 1. Adding parameters to PXE server
 Key   |  Type | Value | Exmaple |Discription
 ---   | --- | --- | --- | --- |
 ignition.config.url  | String | http://{location reachable to PXE and remote VM in order to get the ignition file}/```capturemacs.ign``` custom-config | ignition.config.url=http://my.web.server.redhat.com/```capturemacs.ign``` custom-config | This parameter is used to allow the server to load an extra ignition file which captures the MAC addresses and saves them into a file for later use in  machine config.
@@ -21,17 +21,17 @@ macAddressList | String | List of MAC address should be set per host In the foll
 coreos-dev | String | The type of block device to install the system to | coreos-dev=/dev/<u>sda</u> | The used to set the block device on the system to install to.
 <br>
 
-### <u>2. Prepare the files</u>
+### 2. Prepare the files
 - Upload ```capturemacs.ign``` to a shared location which the OpenShift nodes can access.
 
 - File ```96-configure-ovs-bonding.yaml``` is a MachineConfig,which you can apply manually once the cluster is up or add it to the  installation automation/pipeline.
 
-### <u>3. Run the installation </u>
+### 3. Run the installation
 - Follow the guide to installing a bare-metal cluster in the [OpenShift production documentation.
 ](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.7/html/installing/installing-on-bare-metal)
 
 
-### <u>Optioanl - AllInOne</u>
+### Optioanl - AllInOne
 - ```allInOne.ign``` file is also an option that can be used to get the mac addresses and set the nic bonding it includes both ```capturemacs.ign``` and ```96-configure-ovs-bonding.yaml``` in one ignition file.
 <br>
 To use this file follow the [Prerequisites](#prerequisites) and the [Usage](#usage) section with the ```allInOne.ign``` file.
@@ -42,7 +42,7 @@ To use this file follow the [Prerequisites](#prerequisites) and the [Usage](#usa
 The contents of the ```setup-ovs.sh``` file should be encoded with base64 and implemented in the MachineConfig yaml file.
 
 - In order to change the bond type to something other than balance-slb (for example active-backup) ,open the  ```setup-ovs.sh``` file and search for the “#make bond” section. <br>
-Change <u>“ovs-port.bond-mode”</u> to the desired type and make sure that all other related settings are aligned. 
+Change *“ovs-port.bond-mode”* to the desired type and make sure that all other related settings are aligned. 
 
 - MachineConfig file is a “Day 2” tool that allows to configure or run scripts on a machine with an installed OS (post-installation).
 
