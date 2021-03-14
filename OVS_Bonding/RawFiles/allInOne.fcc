@@ -1,0 +1,138 @@
+variant: fcos
+version: 1.1.0
+
+storage:
+  files:
+    - path: /etc/systemd/network/99-default.link
+      mode: 420
+      contents:
+        inline: |
+          [Link]
+          NamePolicy=mac
+          MACAddressPolicy=persistent
+    - path: /etc/NetworkManager/conf.d/10-dhcp-config.conf
+      mode: 420
+      contents:
+        inline: |
+          [main]
+          no-auto-default=*
+          dhcp=dhclient
+    - path: /usr/local/bin/capture-macs
+      mode: 0755
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+          set -ex
+          echo "Processing MAC addresses"
+          cmdline=( $(</proc/cmdline) )
+          karg() {
+              local name="$1" value="${2:-}"
+              for arg in "${cmdline[@]}"; do
+                  if [[ "${arg%%=*}" == "${name}" ]]; then
+                      value="${arg#*=}"
+                  fi
+              done
+              echo "${value}"
+          }
+          device="$(karg coreos.inst.install_dev)"
+          if [[ -z $device ]]; then
+              echo "Install device not specified."
+              exit 1
+          fi
+          device="/dev/${device##/dev/}" 
+          udevadm settle      
+          macs="$(karg macAddressList)"
+          if [[ -z $macs ]]; then
+            echo "No MAC addresses specified."
+            exit 1
+          fi
+          export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
+          export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
+          mount "$device"1  /boot
+          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
+    - path: /usr/local/bin/setup-ovs
+      mode: 0755
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+          set -ex
+          if [[ ! -f /boot/mac_addresses ]] ; then
+            echo "no mac address configuration file found .. exiting"
+            exit 1
+          fi
+          if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
+            echo "configure ovs bonding"
+            primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
+            secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
+            default_device=""
+            secondary_device=""
+            profile_name=""
+            secondary_profile_name=""
+            for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
+                dev_mac=$(nmcli -g GENERAL.HWADDR dev show $dev | sed -e 's/\\//g' | tr '[A-Z]' '[a-z]')
+                case $dev_mac in
+                $primary_mac)
+                default_device=$dev
+                profile_name=$(nmcli -g GENERAL.CONNECTION dev show $dev)
+                ;;
+                $secondary_mac)
+                secondary_device=$dev
+                secondary_profile_name=$(nmcli -g GENERAL.CONNECTION dev show $dev)
+                ;;
+                *)
+                ;;
+                esac
+            done
+            echo -e "default dev: $default_device ($profile_name)\nsecondary dev: $secondary_device ($secondary_profile_name)"
+            mac=$(sudo nmcli -g GENERAL.HWADDR dev show $default_device | sed -e 's/\\//g')
+            # code.engineering
+            nmcli conn add type ovs-bridge conn.interface brcnv 802-3-ethernet.cloned-mac-address $mac
+            nmcli conn add type ovs-port conn.interface brcnv-port master brcnv
+            nmcli conn add type ovs-interface conn.id brcnv-iface conn.interface brcnv master brcnv-port ipv4.method auto ipv4.dhcp-client-id "mac" connection.autoconnect no
+            # make bond
+            nmcli conn add type ovs-port conn.interface bond0 master brcnv ovs-port.bond-mode balance-slb
+            nmcli conn add type ethernet conn.interface $default_device master bond0
+            nmcli conn add type ethernet conn.interface $secondary_device master bond0
+            nmcli conn down "$profile_name" || true
+            nmcli conn mod "$profile_name" connection.autoconnect no || true
+            nmcli conn down "$secondary_profile_name" || true
+            nmcli conn mod "$secondary_profile_name" connection.autoconnect no || true
+            if ! nmcli conn up brcnv-iface; then
+              nmcli conn up "$profile_name" || true
+              nmcli conn mod "$profile_name" connection.autoconnect yes
+              nmcli conn up "$secondary_profile_name" || true
+              nmcli conn mod "$secondary_profile_name" connection.autoconnect yes
+              nmcli c delete $(nmcli c show |grep ovs-cnv |awk '{print $1}') || true
+            else
+              nmcli conn mod brcnv-iface connection.autoconnect yes
+            reboot
+            fi
+            else
+            echo "ovs bridge already present"
+            fi
+systemd:
+  units:
+    - name: capture-macs.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Capture MAC address from kargs
+        After=coreos-installer.service
+        Before=coreos-installer.target
+        ConditionKernelCommandLine=custom-config
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/capture-macs
+        [Install]
+        RequiredBy=coreos-installer.target
+    - name: setup-ovs.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Setup OVS bonding
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/setup-ovs
+        [Install]
+        WantedBy=multi-user.target
+

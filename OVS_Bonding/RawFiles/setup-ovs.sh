@@ -2,6 +2,11 @@
 
 set -ex
 
+if [[ ! -f /boot/mac_addresses ]] ; then
+  echo "no mac address configuration file found .. exiting"
+  exit 1
+fi
+
 if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   echo "configure ovs bonding"
   primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
