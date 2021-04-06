@@ -34,15 +34,6 @@ storage:
               done
               echo "${value}"
           }
-          # Get install device
-          device="$(karg coreos.inst.install_dev)"
-          if [[ -z $device ]]; then
-              echo "Install device not specified."
-              exit 1
-          fi
-          # Append /dev/ if missing
-          device="/dev/${device##/dev/}"
-
           # Wait for device nodes
           udevadm settle
           
@@ -53,9 +44,8 @@ storage:
           fi
           export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
           export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
-          mount "$device"1 /var/mnt
-          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /var/mnt/mac_addresses
-          umount /var/mnt
+          mount "/dev/disk/by-label/boot" /boot
+          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
          
     - path: /usr/local/bin/create-datastore
       mode: 0755
