@@ -8,7 +8,6 @@ if [[ ! -f /boot/mac_addresses ]] ; then
 fi
 
 if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
-  oc --kubeconfig /etc/kubernetes/kubeconfig label node $(hostname)  network.operator.openshift.io/external-openvswitch=true
   echo "configure ovs bonding"
   primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
   secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
