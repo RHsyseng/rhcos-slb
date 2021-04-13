@@ -45,8 +45,7 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
                  conn.interface brcnv master brcnv-port \
                  ipv4.method auto \
                  ipv4.dhcp-client-id "mac" \
-                 connection.autoconnect no \
-                 802-3-ethernet.cloned-mac-address $mac
+                 connection.autoconnect no
   
   # make bond
   nmcli conn add type ovs-port conn.interface bond0 master brcnv ovs-port.bond-mode balance-slb
