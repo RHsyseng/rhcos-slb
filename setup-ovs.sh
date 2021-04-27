@@ -36,6 +36,9 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   echo -e "default dev: $default_device ($profile_name)\nsecondary dev: $secondary_device ($secondary_profile_name)"
   
   mac=$(sudo nmcli -g GENERAL.HWADDR dev show $default_device | sed -e 's/\\//g')
+
+  # delete old bridge if it exists
+  ovs-vsctl --if-exists del-br brcnv
   
   # make bridge
   nmcli conn add type ovs-bridge conn.interface brcnv 802-3-ethernet.cloned-mac-address $mac
