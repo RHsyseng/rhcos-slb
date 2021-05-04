@@ -41,14 +41,15 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   ovs-vsctl --if-exists del-br brcnv
   
   # make bridge
-  nmcli conn add type ovs-bridge conn.interface brcnv 802-3-ethernet.cloned-mac-address $mac
+  nmcli conn add type ovs-bridge conn.interface brcnv
   nmcli conn add type ovs-port conn.interface brcnv-port master brcnv
   nmcli conn add type ovs-interface \
                  conn.id brcnv-iface \
                  conn.interface brcnv master brcnv-port \
                  ipv4.method auto \
                  ipv4.dhcp-client-id "mac" \
-                 connection.autoconnect no
+                 connection.autoconnect no \
+                 802-3-ethernet.cloned-mac-address $mac
   
   # make bond
   nmcli conn add type ovs-port conn.interface bond0 master brcnv ovs-port.bond-mode balance-slb
