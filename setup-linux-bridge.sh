@@ -39,9 +39,10 @@ if [[ $(nmcli conn | grep -c brcnv) -eq 0 ]]; then
 
 
   nmcli conn add type bridge ifname brcnv con-name brcnv 802-3-ethernet.cloned-mac-address $mac ipv4.method auto ipv4.dhcp-client-id "mac" connection.autoconnect no bridge.stp no
-  nmcli conn add type bond ifname bond0 con-name bond0 bond.options "mode=balance-xor,miimon=100,xmit_hash_policy=5" master brcnv connection.autoconnect no
+  nmcli conn add type bond ifname bond0 con-name bond0 bond.options "mode=balance-alb,miimon=100,xmit_hash_policy=5" master brcnv connection.autoconnect no
   nmcli conn add type ethernet ifname $default_device con-name bond0-$default_device master bond0 connection.autoconnect no
   nmcli conn add type ethernet ifname $secondary_device con-name bond0-$secondary_device master bond0 connection.autoconnect no
+  echo 0 > /sys/class/net/bond0/bonding/tlb_dynamic_lb
 
   nmcli conn down "$profile_name" || true
   nmcli conn mod "$profile_name" connection.autoconnect no || true
