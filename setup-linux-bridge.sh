@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -ex
+
 if [[ ! -f /boot/mac_addresses ]] ; then
   echo "no mac address configuration file found .. exiting"
   exit 1
