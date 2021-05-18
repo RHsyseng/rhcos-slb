@@ -17,7 +17,7 @@ spec:
             After=openvswitch.service
             [Service]
             Type=oneshot
-            ExecStart=/bin/sh /var/setup-ovs.sh
+            ExecStart=/bin/sh /var/setup-linux-bridge.sh
             [Install]
             WantedBy=multi-user.target
           name: setup-ovs.service
@@ -28,4 +28,4 @@ spec:
             source: data:text/plain;charset=utf-8;base64,${base64_script_content}
           filesystem: root
           mode: 484
-          path: /var/setup-ovs.sh
+          path: /var/setup-linux-bridge.sh
