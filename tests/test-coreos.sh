@@ -23,7 +23,7 @@ fetch_repo() {
 
   if [ ! -d ${destination} ]; then
     mkdir -p ${destination}
-    git clone ${url} ${destination}
+    git clone -q ${url} ${destination}
   fi
 
   (
@@ -51,7 +51,7 @@ fetch_latest_rhcos_image() {
   if [[ $(echo "${shasum} ${image_path}/${latest_image_gz}" | sha256sum --check) != "${image_path}/${latest_image_gz}: OK" ]]; then
     mkdir -p ${image_path}
     rm -rf ${image_path}/*
-    wget -O ${image_path}/${latest_image_gz} ${image_url}/${latest_image_gz}
+    wget -nv -O ${image_path}/${latest_image_gz} ${image_url}/${latest_image_gz}
   fi
 
   gzip -dk --force ${image_path}/${latest_image_gz}
