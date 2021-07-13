@@ -78,6 +78,11 @@ replace_setup_ovs_script() {
   echo "var setupOvsScript =\`${new_ovs_script}\`" >> ${coreos_ci_full_path}
 }
 
+generate_junit_from_tap_file() {
+  local output_path_relative_to_mantle=$1
+  npx tap-junit --pretty -i ${output_path_relative_to_mantle}/test.tap -o _kola_temp -n "junit.xml" || true
+}
+
 print_test_results() {
   local test_output=$1
   cat ${test_output}
@@ -105,6 +110,7 @@ run_test_suite() {
   test_output=${TMP_COREOS_ASSEMBLER_PATH}/tests_output
   run_tests ${latest_image} ${test_output}
 
+  generate_junit_from_tap_file "$(grep -o '_kola_temp/[[:print:]]*' ${test_output})"
 
   print_test_results ${test_output}
 
