@@ -4,7 +4,7 @@ set -ex
 
 RHCOS_SLB_REPO_URL=https://github.com/coreos/coreos-assembler.git
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
-TESTS_LIST=(rhcos.network.multiple-nics rhcos.network.bond-with-dhcp)
+TESTS_LIST="rhcos.network.multiple-nics rhcos.network.bond-with-dhcp"
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
 IMAGE_PATH=/tmp/rhcos-latest-image
 SCRIPT_FOLDER=$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
@@ -80,18 +80,17 @@ replace_setup_ovs_script() {
 
 run_tests() {
   local latest_image=$1
+  local test_output=$2
+  ./bin/kola run -b rhcos --qemu-image ${latest_image} ${TESTS_LIST} >${test_output}
+}
+
+run_test_suite() {
+  local latest_image=$1
 
   cd mantle && make >/dev/null
-  for test_name in "${TESTS_LIST[@]}"; do
-    test_output=${TMP_COREOS_ASSEMBLER_PATH}/${test_name}_output
-    ./bin/kola run -b rhcos --qemu-image ${latest_image} ${test_name} >${test_output}
-    if [[ ! $(grep "PASS: ${test_name}" ${test_output}) ]]; then
-      tests_failed=${test_name},${tests_failed}
-    fi
-    cp ${test_output} ${ARTIFACTS} || true
-  done
+  test_output=${TMP_COREOS_ASSEMBLER_PATH}/tests_output
+  run_tests ${latest_image} ${test_output}
 
-  echo "${tests_failed}"
 }
 
 teardown() {
@@ -109,11 +108,4 @@ latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH})
 
 replace_setup_ovs_script ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc/network.go
 
-tests_failed=$(run_tests ${latest_image})
-
-if [[ ! -z ${tests_failed} ]]; then
-  echo "tests failed: ${tests_failed}"
-  exit 1
-else
-  echo "tests passed"
-fi
+run_test_suite ${latest_image}
