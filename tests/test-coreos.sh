@@ -13,7 +13,7 @@ RHCOS_SLB_REPO_PATH=${SCRIPT_FOLDER%/*}
 create_artifacts_path() {
   local tmp_dir=$1
   export ARTIFACTS=${ARTIFACTS-${tmp_dir}/artifacts}
-  mkdir -p ${ARTIFACTS}/_kola_temp
+  mkdir -p ${ARTIFACTS}
 }
 
 fetch_repo() {
@@ -78,6 +78,20 @@ replace_setup_ovs_script() {
   echo "var setupOvsScript =\`${new_ovs_script}\`" >> ${coreos_ci_full_path}
 }
 
+print_test_results() {
+  local test_output=$1
+  cat ${test_output}
+}
+
+expect_tests_to_succeed() {
+  local test_output=$1
+  if [[ $(grep "FAIL:" ${test_output} >/dev/null) ]]; then
+    exit 1
+  else
+    echo "tests passed"
+  fi
+}
+
 run_tests() {
   local latest_image=$1
   local test_output=$2
@@ -91,11 +105,15 @@ run_test_suite() {
   test_output=${TMP_COREOS_ASSEMBLER_PATH}/tests_output
   run_tests ${latest_image} ${test_output}
 
+
+  print_test_results ${test_output}
+
+  expect_tests_to_succeed ${test_output}
 }
 
 teardown() {
-	echo "Copying test artifacts to ${ARTIFACTS}"
-  cp -r ${TMP_COREOS_ASSEMBLER_PATH}/mantle/_kola_temp/* ${ARTIFACTS}/_kola_temp || true
+  echo "Copying test artifacts to ${ARTIFACTS}"
+  cp -r ${TMP_COREOS_ASSEMBLER_PATH}/mantle/_kola_temp/* ${ARTIFACTS} || true
 }
 
 fetch_repo ${TMP_COREOS_ASSEMBLER_PATH} ${RHCOS_SLB_REPO_URL} main
