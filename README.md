@@ -55,7 +55,7 @@ This repo uses [coreos-assembler repo](https://github.com/coreos/coreos-assemble
 The test downloads the latest RHCOS image and runs network related tests, using the local `setup-ovs.sh` script.
 You can run these tests manually on Fedora by running the test script:
 ```bash
-sudo dnf install -y git go make wget qemu qemu-img swtpm
+sudo ./tests/setup.sh
 ./tests/test-coreos.sh
 ```
 
