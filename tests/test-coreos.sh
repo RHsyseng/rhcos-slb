@@ -73,9 +73,12 @@ replace_setup_ovs_script() {
 
   # Rename the current script variable in coreos-assemlber
   sed -i 's|setupOvsScript =|notUsedSetupOvsScript =|g' ${coreos_ci_full_path}
+
+  set +x
   # Add the new script to the coreos-ci instead of the old variable
   local new_ovs_script="$(cat ${setup_ovs_script})"
   echo "var setupOvsScript =\`${new_ovs_script}\`" >> ${coreos_ci_full_path}
+  set -x
 }
 
 print_test_results() {
