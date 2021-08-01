@@ -39,12 +39,15 @@ storage:
           
           macs="$(karg macAddressList)"
           if [[ -z $macs ]]; then
-            echo "No MAC addresses specified."
-            exit 1
+              echo "No MAC addresses specified."
+              exit 1
           fi
           export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
           export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
-          mount "/dev/disk/by-label/boot" /boot
+          if [[ $(cat /proc/mounts | awk '{print $2}' | grep "/boot") ]]; then
+              MOUNT_FLAGS="-o rw,remount"
+          fi
+          mount ${MOUNT_FLAGS} "/dev/disk/by-label/boot" /boot
           echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
          
     - path: /usr/local/bin/create-datastore
