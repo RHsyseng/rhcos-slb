@@ -35,7 +35,7 @@ fetch_repo() {
 fetch_latest_rhcos_image() {
   local image_path=$1
   local image_url="https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/"
-  local latest_image_gz=$(curl ${image_url} | grep -o rhcos-[0-9].[0-9].[0-9][0-9]-x86_64-qemu.x86_64.qcow2.gz | head -1)
+  local latest_image_gz=$(curl ${image_url} | grep -o rhcos-[0-9].[0-9].[0-9]\\+-x86_64-qemu.x86_64.qcow2.gz | head -1)
   if [[ -z "${latest_image_gz}" ]]; then
     echo failed to get the latest image name. check url and regex
     exit 1
