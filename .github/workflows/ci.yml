@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up dependencies
+        run: |
+          sudo add-apt-repository ppa:smoser/swtpm
+          sudo apt-get update
+          sudo apt-get install qemu qemu-system-x86 qemu-utils npm swtpm
+          sudo npm i -D tap-junit
+      - name: Run the test
+        run: ARTIFACTS=~/test_artifacts COSA_NO_KVM=yes ./tests/test-coreos.sh
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: ~/test_artifacts
+          retention-days: 5
