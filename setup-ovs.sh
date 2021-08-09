@@ -34,7 +34,6 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   secondary_device=""
   profile_name=""
   secondary_profile_name=""
-
   for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
     dev_mac=$(nmcli -g GENERAL.HWADDR dev show $dev | sed -e 's/\\//g' | tr '[A-Z]' '[a-z]')
     case $dev_mac in
