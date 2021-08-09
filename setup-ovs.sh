@@ -7,6 +7,11 @@ if [[ ! -f /boot/mac_addresses ]] ; then
   exit 1
 fi
 
+if [[ -d /boot/system-connections-merged ]]; then
+  cp -r /boot/system-connections-merged /etc/NetworkManager/
+  systemctl restart NetworkManager
+fi
+
 if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   echo "configure ovs bonding"
   primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
@@ -16,10 +21,7 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   secondary_device=""
   profile_name=""
   secondary_profile_name=""
-  
-cp -r /boot/system-connections-merged /etc/NetworkManager/
-Systemctl restart NetworkManger
-  
+    
   for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
     dev_mac=$(nmcli -g GENERAL.HWADDR dev show $dev | sed -e 's/\\//g' | tr '[A-Z]' '[a-z]')
     case $dev_mac in
@@ -65,9 +67,10 @@ Systemctl restart NetworkManger
       nmcli c delete $(nmcli c show |grep ovs-cnv |awk '{print $1}') || true
   else
       nmcli conn mod brcnv-iface connection.autoconnect yes
-      cp -r /etc/NetworkManager/system-connections-merged /boot/
-      reboot
   fi
 else
     echo "ovs bridge already present"
 fi
+
+
+cp -r /etc/NetworkManager/system-connections-merged /boot/
