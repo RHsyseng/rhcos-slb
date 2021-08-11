@@ -7,21 +7,30 @@ if [[ ! -f /boot/mac_addresses ]] ; then
   exit 1
 fi
 
-if [[ -d /boot/system-connections-merged ]]; then
-  cp -r /boot/system-connections-merged /etc/NetworkManager/
+if [[ -d /var/system-connections-merged ]]; then
+  # OCP 4.7
+  rm -r /etc/NetworkManager/system-connections-merged
+  cp -r /var/system-connections-merged /etc/NetworkManager/
+elif [[  -d /var/systemConnectionsMerged ]]; then
+  # OCP 4.8
+  rm -r /etc/NetworkManager/systemConnectionsMerged
+  cp -r /var/systemConnectionsMerged /etc/NetworkManager/
   systemctl restart NetworkManager
+  for c in $(nmcli c show | grep ovs | awk '{print $1}'); do nmcli c up $c; done
+  nmcli c up brcnv-iface
 fi
+
 
 if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   echo "configure ovs bonding"
   primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
   secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
-  
+
   default_device=""
   secondary_device=""
   profile_name=""
   secondary_profile_name=""
-    
+
   for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
     dev_mac=$(nmcli -g GENERAL.HWADDR dev show $dev | sed -e 's/\\//g' | tr '[A-Z]' '[a-z]')
     case $dev_mac in
@@ -38,19 +47,15 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
      esac
   done
   echo -e "default dev: $default_device ($profile_name)\nsecondary dev: $secondary_device ($secondary_profile_name)"
-  
+
   mac=$(sudo nmcli -g GENERAL.HWADDR dev show $default_device | sed -e 's/\\//g')
-  
-  # make bridge
-  nmcli conn add type ovs-bridge conn.interface brcnv 802-3-ethernet.cloned-mac-address $mac
+
+  ovs-vsctl --if-exists del-br brcnv
+  # code.engineering
+  nmcli conn add type ovs-bridge conn.interface brcnv
   nmcli conn add type ovs-port conn.interface brcnv-port master brcnv
-  nmcli conn add type ovs-interface \
-                 conn.id brcnv-iface \
-                 conn.interface brcnv master brcnv-port \
-                 ipv4.method auto \
-                 ipv4.dhcp-client-id "mac" \
-                 connection.autoconnect no
-  
+  nmcli conn add type ovs-interface conn.id brcnv-iface conn.interface brcnv master brcnv-port ipv4.method auto ipv4.dhcp-client-id "mac" connection.autoconnect no 802-3-ethernet.cloned-mac-address $mac
+
   # make bond
   nmcli conn add type ovs-port conn.interface bond0 master brcnv ovs-port.bond-mode balance-slb
   nmcli conn add type ethernet conn.interface $default_device master bond0
@@ -59,6 +64,7 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   nmcli conn mod "$profile_name" connection.autoconnect no || true
   nmcli conn down "$secondary_profile_name" || true
   nmcli conn mod "$secondary_profile_name" connection.autoconnect no || true
+
   if ! nmcli conn up brcnv-iface; then
       nmcli conn up "$profile_name" || true
       nmcli conn mod "$profile_name" connection.autoconnect yes
@@ -67,10 +73,14 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
       nmcli c delete $(nmcli c show |grep ovs-cnv |awk '{print $1}') || true
   else
       nmcli conn mod brcnv-iface connection.autoconnect yes
+      nmcli conn delete "$profile_name" || true
+      nmcli conn delete "$secondary_profile_name" || true
   fi
 else
     echo "ovs bridge already present"
 fi
 
-
-cp -r /etc/NetworkManager/system-connections-merged /boot/
+# ocp 4.7
+cp -r /etc/NetworkManager/system-connections-merged /var/ || true
+# OCP 4.8
+cp -r /etc/NetworkManager/systemConnectionsMerged /var/ || true
