@@ -21,6 +21,8 @@ if [[ -d /var/ovsbond48 ]]; then
   echo "Loading OVS old profile"
   cp -r /var/ovsbond48/* /etc/NetworkManager/systemConnectionsMerged
   systemctl restart NetworkManager
+  for c in $(nmcli c show | grep ovs | awk '{print $1}'); do nmcli c up $c; done
+  nmcli c up brcnv-iface
 fi
 
 
@@ -67,6 +69,7 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   nmcli conn mod "$profile_name" connection.autoconnect no || true
   nmcli conn down "$secondary_profile_name" || true
   nmcli conn mod "$secondary_profile_name" connection.autoconnect no || true
+
   if ! nmcli conn up brcnv-iface; then
       nmcli conn up "$profile_name" || true
       nmcli conn mod "$profile_name" connection.autoconnect yes
