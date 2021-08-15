@@ -2,27 +2,31 @@
 
 set -ex
 
+rm -rf /etc/NetworkManager/system-connections/*
+
 if [[ ! -f /boot/mac_addresses ]] ; then
   echo "no mac address configuration file found .. exiting"
   exit 1
 fi
 
-if [[ -d /var/system-connections-merged ]]; then
-  # OCP 4.7
-  rm -r /etc/NetworkManager/system-connections-merged
-  cp -r /var/system-connections-merged /etc/NetworkManager/
-elif [[  -d /var/systemConnectionsMerged ]]; then
-  # OCP 4.8
-  rm -r /etc/NetworkManager/systemConnectionsMerged
-  cp -r /var/systemConnectionsMerged /etc/NetworkManager/
+# ocp 4.7
+if [[ -d /var/ovsbond47 ]]; then
+  echo "Loading OVS old profile"
+  cp -r /var/ovsbond47/* /etc/NetworkManager/system-connections-merged
   systemctl restart NetworkManager
-  for c in $(nmcli c show | grep ovs | awk '{print $1}'); do nmcli c up $c; done
-  nmcli c up brcnv-iface
+fi
+
+# ocp 4.8
+if [[ -d /var/ovsbond48 ]]; then
+  echo "Loading OVS old profile"
+  cp -r /var/ovsbond48/* /etc/NetworkManager/systemConnectionsMerged
+  systemctl restart NetworkManager
 fi
 
 
 if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   echo "configure ovs bonding"
+  ovs-vsctl --if-exists del-br brcnv
   primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
   secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
 
@@ -64,7 +68,6 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   nmcli conn mod "$profile_name" connection.autoconnect no || true
   nmcli conn down "$secondary_profile_name" || true
   nmcli conn mod "$secondary_profile_name" connection.autoconnect no || true
-
   if ! nmcli conn up brcnv-iface; then
       nmcli conn up "$profile_name" || true
       nmcli conn mod "$profile_name" connection.autoconnect yes
@@ -73,14 +76,17 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
       nmcli c delete $(nmcli c show |grep ovs-cnv |awk '{print $1}') || true
   else
       nmcli conn mod brcnv-iface connection.autoconnect yes
-      nmcli conn delete "$profile_name" || true
-      nmcli conn delete "$secondary_profile_name" || true
+      nmcli conn up ovs-slave-$secondary_device
+      # ocp 4.7
+      rm -r /var/ovsbond47 || true
+      cp -r /etc/NetworkManager/system-connections-merged /var/ovsbond47 || true
+      # ocp 4.8
+      rm -r /var/ovsbond48 || true
+      cp -r /etc/NetworkManager/systemConnectionsMerged /var/ovsbond48 || true
+      #reboot
   fi
 else
     echo "ovs bridge already present"
+    for c in $(nmcli c show | grep ovs | awk '{print $1}'); do nmcli c up $c; done
+    nmcli c up brcnv-iface
 fi
-
-# ocp 4.7
-cp -r /etc/NetworkManager/system-connections-merged /var/ || true
-# OCP 4.8
-cp -r /etc/NetworkManager/systemConnectionsMerged /var/ || true
