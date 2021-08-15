@@ -58,6 +58,7 @@ You can run these tests manually on Fedora by running the test script:
 sudo ./tests/setup.sh
 ./tests/test-coreos.sh
 ```
+
 ## Additional Documentation 
  - [Redhat CoreOS (RHCORS) features including ignition and machineConfig explanation](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.7/html/architecture/architecture-rhcos)
 
