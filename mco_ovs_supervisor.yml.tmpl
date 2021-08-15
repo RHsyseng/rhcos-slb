@@ -12,7 +12,9 @@ spec:
       units:
         - contents: |
             [Unit]
-            After=NetworkManager.service openvswitch.service
+            After=network-online.target
+            Wants=network-online.target
+            After=openvswitch.service
             [Service]
             Type=oneshot
             ExecStart=/bin/sh /var/setup-ovs.sh

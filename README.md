@@ -50,15 +50,6 @@ Change *“ovs-port.bond-mode”* to the desired type and make sure that all oth
 
 - MachineConfig file is a “Day 2” tool that allows to configure or run scripts on a machine with an installed OS (post-installation).
 
-## CI and Testing
-This repo uses [coreos-assembler repo](https://github.com/coreos/coreos-assembler) to run important scenarios relevant to this use-case.
-The test downloads the latest RHCOS image and runs network related tests, using the local `setup-ovs.sh` script.
-You can run these tests manually on Fedora by running the test script:
-```bash
-sudo ./tests/setup.sh
-./tests/test-coreos.sh
-```
-
 ## Additional Documentation 
  - [Redhat CoreOS (RHCORS) features including ignition and machineConfig explanation](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.7/html/architecture/architecture-rhcos)
 
