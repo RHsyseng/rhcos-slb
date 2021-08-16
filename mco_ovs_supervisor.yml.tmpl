@@ -13,6 +13,7 @@ spec:
         - contents: |
             [Unit]
             After=NetworkManager.service openvswitch.service
+            Before=ovs-configuration.service
             [Service]
             Type=oneshot
             ExecStart=/bin/sh /var/setup-ovs.sh
