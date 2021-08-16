@@ -2,6 +2,8 @@
 
 set -ex
 
+rm -rf /etc/NetworkManager/system-connections/*
+
 if [[ ! -f /boot/mac_addresses ]] ; then
   echo "no mac address configuration file found .. exiting"
   exit 1
@@ -11,13 +13,13 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
   echo "configure ovs bonding"
   primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
   secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
-  
+
   default_device=""
   secondary_device=""
   profile_name=""
   secondary_profile_name=""
-  
-  
+
+
   for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
     dev_mac=$(nmcli -g GENERAL.HWADDR dev show $dev | sed -e 's/\\//g' | tr '[A-Z]' '[a-z]')
     case $dev_mac in
@@ -34,7 +36,7 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
      esac
   done
   echo -e "default dev: $default_device ($profile_name)\nsecondary dev: $secondary_device ($secondary_profile_name)"
-  
+
   mac=$(sudo nmcli -g GENERAL.HWADDR dev show $default_device | sed -e 's/\\//g')
 
   # delete old bridge if it exists
@@ -50,7 +52,7 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
                  ipv4.dhcp-client-id "mac" \
                  connection.autoconnect no \
                  802-3-ethernet.cloned-mac-address $mac
-  
+
   # make bond
   nmcli conn add type ovs-port conn.interface bond0 master brcnv ovs-port.bond-mode balance-slb
   nmcli conn add type ethernet conn.interface $default_device master bond0
@@ -67,6 +69,7 @@ if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
       nmcli c delete $(nmcli c show |grep ovs-cnv |awk '{print $1}') || true
   else
       nmcli conn mod brcnv-iface connection.autoconnect yes
+      nmcli conn up ovs-slave-$secondary_device
   fi
 else
     echo "ovs bridge already present"
