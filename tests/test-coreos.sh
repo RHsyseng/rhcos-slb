@@ -111,7 +111,7 @@ run_test_suite() {
 
   cd mantle && make >/dev/null
   test_output=${TMP_COREOS_ASSEMBLER_PATH}/tests_output
-  run_tests ${latest_image} ${test_output}
+  run_tests ${latest_image} ${test_output} || true
 
   generate_junit_from_tap_file "$(grep -o '_kola_temp/[[:print:]]*' ${test_output})"
 
