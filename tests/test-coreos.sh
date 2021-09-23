@@ -93,7 +93,7 @@ print_test_results() {
 
 expect_tests_to_succeed() {
   local test_output=$1
-  if [[ $(grep "FAIL:" ${test_output} >/dev/null) ]]; then
+  if [[ -n "$(grep "FAIL:" ${test_output})" ]]; then
     exit 1
   else
     echo "tests passed"
