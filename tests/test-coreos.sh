@@ -96,7 +96,7 @@ expect_tests_to_succeed() {
   if [[ $(grep "FAIL:" ${test_output} >/dev/null) ]]; then
     exit 1
   else
-    echo "tests passed"
+    echo "tests passed123"
   fi
 }
 
