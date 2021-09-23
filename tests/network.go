@@ -15,9 +15,9 @@
 package misc
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -91,6 +91,17 @@ func addKernelArgs(c cluster.TestCluster, m platform.Machine, args []string) {
 	}
 }
 
+func getUserData(c cluster.TestCluster) (string, error) {
+	path := "custom-config.ign"
+
+	var data, err = os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
 func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac string) {
 	var m platform.Machine
 	var err error
@@ -99,46 +110,12 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 		SecondaryNics: 2,
 	}
 
-	var userdata *conf.UserData = conf.Ignition(fmt.Sprintf(`{
-		"ignition": {
-			"version": "3.2.0"
-		},
-		"storage": {
-			"files": [
-				{
-					"path": "/usr/local/bin/capture-macs",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 755
-				},
-				{
-					"path": "/usr/local/bin/setup-ovs",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 755
-				}
-			]
-		},
-		"systemd": {
-			"units": [
-				{
-					"enabled": true,
-					"name": "openvswitch.service"
-				},
-				{
-					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nAfter=network-online.target\nAfter=openvswitch.service\nConditionKernelCommandLine=macAddressList\nRequiresMountsFor=/boot\n\n[Service]\nType=oneshot\nMountFlags=slave\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
-					"enabled": true,
-					"name": "capture-macs.service"
-				},
-				{
-					"contents": "[Unit]\nDescription=Setup OVS bonding\nAfter=capture-macs.service\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/setup-ovs\n\n[Install]\nRequiredBy=multi-user.target\n",
-					"enabled": true,
-					"name": "setup-ovs.service"
-				}
+	ignition_config, err := getUserData(c)
+	if err != nil {
+		c.Fatal(err)
+	}
 
-			]
-		}
-	}`,
-		base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
-		base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
+	var userdata *conf.UserData = conf.Ignition(ignition_config)
 
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement

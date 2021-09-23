@@ -58,6 +58,40 @@ fetch_latest_rhcos_image() {
   echo ${image_path}/${image_name}
 }
 
+# modify_ignition_fcc performs some modifications on the fcc file in order to run on the coreos-ci infra
+modify_ignition_fcc() {
+  local rhcos_slb_repo_path=$1
+  local coreos_ci_repo_path=$2
+  local coreos_ci_ignition_relative_path=$3
+  local rhcos_slb_ignition_fcc=${rhcos_slb_repo_path}/custom-config.fcc
+  local coreos_ci_ignition_fcc=${coreos_ci_repo_path}/custom-config.fcc
+  local coreos_ci_ignition_ign=${coreos_ci_repo_path}/${coreos_ci_ignition_relative_path}/custom-config.ign
+
+  # Copy ignition_fcc to coreos-ci folder
+  cp ${rhcos_slb_ignition_fcc} ${coreos_ci_ignition_fcc}
+
+  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
+  sed -i 's|exit 1|exit 0|g' ${coreos_ci_ignition_fcc}
+
+  # Remove 10-dhcp-config.conf config to not break test infra connectivity
+  sed -i 's|path: /etc/NetworkManager/conf.d/10-dhcp-config.conf|path: /tmp/10-dhcp-config.conf|g' ${coreos_ci_ignition_fcc}
+
+  # Remove ConditionKernelCommandLine that is not used
+  sed -i 's|ConditionKernelCommandLine=custom-config||g' ${coreos_ci_ignition_fcc}
+
+  # Remove Before systemd condition, as coreos-*.targets are not used on the tested image
+  sed -i 's|Before=coreos-installer.target||g' ${coreos_ci_ignition_fcc}
+
+  # Replace After systemd condition, as coreos-*.targets are not used on the tested image
+  sed -i 's|After=create-datastore.service|After=network-online.target|g' ${coreos_ci_ignition_fcc}
+
+  # Replace RequiredBy systemd condition, as coreos-*.targets are not used on the tested image
+  sed -i 's|RequiredBy=coreos-installer.target|RequiredBy=multi-user.target|g' ${coreos_ci_ignition_fcc}
+
+  # Finally, convert ignition_fcc to ign format on the coreos-ci repo
+  docker run -i --rm quay.io/coreos/butane:release --pretty < "$coreos_ci_ignition_fcc" > "$coreos_ci_ignition_ign"
+}
+
 replace_setup_ovs_script() {
   local rhcos_slb_repo_path=$1
   local coreos_ci_repo_path=$2
@@ -145,6 +179,8 @@ create_artifacts_path ${TMP_COREOS_ASSEMBLER_PATH}
 trap teardown EXIT SIGINT SIGTERM
 
 latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH})
+
+modify_ignition_fcc ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle
 
 replace_network_tests ${RHCOS_SLB_REPO_PATH} tests ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc
 
