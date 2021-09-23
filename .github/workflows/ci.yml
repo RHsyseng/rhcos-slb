@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ simplify-networking ]
   pull_request:
-    branches: [ main ]
+    branches: [ simplify-networking ]
 
   workflow_dispatch:
 
