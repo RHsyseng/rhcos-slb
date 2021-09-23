@@ -81,6 +81,19 @@ replace_setup_ovs_script() {
   set -x
 }
 
+replace_network_tests() {
+  local rhcos_slb_repo_path=$1
+  local rhcos_slb_test_relative_path=$2
+  local coreos_ci_repo_path=$3
+  local coreos_ci_test_relative_path=$4
+
+  local rhcos_slb_network_test=${rhcos_slb_repo_path}/${rhcos_slb_test_relative_path}/network.go
+  local coreos_ci_network_test=${coreos_ci_repo_path}/${coreos_ci_test_relative_path}/network.go
+
+  # Copy network test to coreos-ci
+  cp --remove-destination ${rhcos_slb_network_test} ${coreos_ci_network_test}
+}
+
 generate_junit_from_tap_file() {
   local output_path_relative_to_mantle=$1
   npx tap-junit --pretty -i ${output_path_relative_to_mantle}/test.tap -o _kola_temp -n "junit.xml" || true
@@ -132,6 +145,8 @@ create_artifacts_path ${TMP_COREOS_ASSEMBLER_PATH}
 trap teardown EXIT SIGINT SIGTERM
 
 latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH})
+
+replace_network_tests ${RHCOS_SLB_REPO_PATH} tests ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc
 
 replace_setup_ovs_script ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc/network.go
 
