@@ -92,29 +92,6 @@ modify_ignition_fcc() {
   docker run -i --rm quay.io/coreos/butane:release --pretty < "$coreos_ci_ignition_fcc" > "$coreos_ci_ignition_ign"
 }
 
-replace_setup_ovs_script() {
-  local rhcos_slb_repo_path=$1
-  local coreos_ci_repo_path=$2
-  local coreos_ci_test_relative_path=$3
-  local setup_ovs_script=${coreos_ci_repo_path}/setup-ovs.sh
-  local coreos_ci_full_path=${coreos_ci_repo_path}/${coreos_ci_test_relative_path}
-
-  # Copy setup_ovs script from rhcos_slb_repo to the coreos-ci repo
-  cp ${rhcos_slb_repo_path}/setup-ovs.sh ${setup_ovs_script}
-  # We need to do specific changes to the script in order for it to run on the coreos-ci
-  # Remove the exit fail if macs file in not inplace.
-  sed -i 's|exit 1|exit 0|g' ${setup_ovs_script}
-
-  # Rename the current script variable in coreos-assemlber
-  sed -i 's|setupOvsScript =|notUsedSetupOvsScript =|g' ${coreos_ci_full_path}
-
-  set +x
-  # Add the new script to the coreos-ci instead of the old variable
-  local new_ovs_script="$(cat ${setup_ovs_script})"
-  echo "var setupOvsScript =\`${new_ovs_script}\`" >> ${coreos_ci_full_path}
-  set -x
-}
-
 replace_network_tests() {
   local rhcos_slb_repo_path=$1
   local rhcos_slb_test_relative_path=$2
@@ -183,7 +160,5 @@ latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH})
 modify_ignition_fcc ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle
 
 replace_network_tests ${RHCOS_SLB_REPO_PATH} tests ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc
-
-replace_setup_ovs_script ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc/network.go
 
 run_test_suite ${latest_image}

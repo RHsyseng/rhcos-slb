@@ -41,33 +41,69 @@ func init() {
 func NetworkSecondaryNics(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
 	secondaryMac := "52:55:00:d1:56:01"
-	ovsBridgeInterface := "brcnv-iface"
 
 	setupMultipleNetworkTest(c, primaryMac, secondaryMac)
 
 	m := c.Machines()[0]
-	checkExpectedMAC(c, m, ovsBridgeInterface, primaryMac)
+	expectedMacsList := []string{primaryMac, secondaryMac}
+	checkExpectedMACs(c, m, expectedMacsList)
 }
 
-func checkExpectedMAC(c cluster.TestCluster, m platform.Machine, interfaceName, expectedMac string) {
-	interfaceMACAddress, err := getInterfaceMAC(c, m, interfaceName)
+func checkExpectedMACs(c cluster.TestCluster, m platform.Machine, expectedMacsList []string) {
+	connectionNamesList := getConnectionsList(c, m)
+	connectionDeviceMap, err := getConnectionDeviceMap(c, m, connectionNamesList)
 	if err != nil {
-		c.Fatalf("failed to fetch interface %s MAC Address: %v", interfaceName, err)
+		c.Fatalf(fmt.Sprintf("failed to get connectionDeviceMap: %v", err))
 	}
 
-	if interfaceMACAddress != expectedMac {
-		c.Fatalf("interface %s MAC %s does not match expected MAC %s", interfaceName, interfaceMACAddress, expectedMac)
+	macConnectionMap, err := getMacConnectionMap(c, m, connectionNamesList, connectionDeviceMap)
+	if err != nil {
+		c.Fatalf(fmt.Sprintf("failed to get macConnectionMap: %v", err))
+	}
+
+	for _, expectedMac := range expectedMacsList {
+		if _, exists := macConnectionMap[expectedMac]; !exists {
+			c.Fatalf(fmt.Sprintf("expected Mac %s does not appear in macConnectionMap %v", expectedMac, macConnectionMap))
+		}
 	}
 }
 
-func getInterfaceMAC(c cluster.TestCluster, m platform.Machine, interfaceName string) (string, error) {
-	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g 802-3-ethernet.cloned-mac-address connection show %s", interfaceName)))
+func getConnectionDeviceMap(c cluster.TestCluster, m platform.Machine, connectionNamesList []string) (map[string]string, error) {
+	connectionDeviceMap := map[string]string{}
+
+	for _, connection := range connectionNamesList {
+		deviceName := string(c.MustSSH(m, fmt.Sprintf("nmcli -g connection.interface-name con show '%s'", connection)))
+		connectionDeviceMap[connection] = deviceName
+	}
+	return connectionDeviceMap, nil
+}
+
+func getConnectionsList(c cluster.TestCluster, m platform.Machine) []string {
+	output := string(c.MustSSH(m, "nmcli -t -f NAME con show --active"))
+	interfaceNames := strings.Split(output, "\n")
+	return interfaceNames
+}
+
+func getMacConnectionMap(c cluster.TestCluster, m platform.Machine, connectionNamesList []string, connectionDeviceMap map[string]string) (map[string]string, error) {
+	MacInterfaceMap := map[string]string{}
+	for _, connection := range connectionNamesList {
+		interfaceMACAddress, err := getDeviceMAC(c, m, connectionDeviceMap[connection])
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch connection %s MAC Address: %v", connection, err)
+		}
+		MacInterfaceMap[interfaceMACAddress] = connection
+	}
+	return MacInterfaceMap, nil
+}
+
+func getDeviceMAC(c cluster.TestCluster, m platform.Machine, deviceName string) (string, error) {
+	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g GENERAL.HWADDR device show '%s'", deviceName)))
 	output = strings.Replace(output, "\\:", ":", -1)
 
 	var macAddress net.HardwareAddr
 	var err error
 	if macAddress, err = net.ParseMAC(output); err != nil {
-		return "", fmt.Errorf("failed to parse MAC address %v for interface Name %s: %v", output, interfaceName, err)
+		return "", fmt.Errorf("failed to parse MAC address %v for device Name %s: %v", output, deviceName, err)
 	}
 
 	return macAddress.String(), nil
