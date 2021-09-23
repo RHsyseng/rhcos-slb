@@ -4,7 +4,7 @@ set -ex
 
 RHCOS_SLB_REPO_URL=https://github.com/coreos/coreos-assembler.git
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
-TESTS_LIST="rhcos.network.multiple-nics rhcos.network.bond-with-dhcp"
+TESTS_LIST="rhcos.network.multiple-nics"
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
 IMAGE_PATH=/tmp/rhcos-latest-image
 SCRIPT_FOLDER=$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
