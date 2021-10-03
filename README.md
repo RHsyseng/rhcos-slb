@@ -21,6 +21,14 @@ macAddressList | String | List of MAC address should be set per host In the foll
 
 
 ### 2. Prepare the files
+- Base64 encode the `capture-macs.sh` file and paste the content into custom-config.fcc file into "base64_capture_macs_script_content" section. 
+
+    **TIP:** To update the content you can use:
+
+```
+export base64_capture_macs_script_content=$(cat capture-macs.sh|base64 -w 0) && envsubst <  custom-config.fcc.tmpl > custom-config.fcc
+```
+
 - Create the ign file from the custom-config.fcc: 
 ```
 fcct custom-config.fcc > file.ign
