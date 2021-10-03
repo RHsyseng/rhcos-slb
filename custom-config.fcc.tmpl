@@ -20,33 +20,7 @@ storage:
     - path: /usr/local/bin/capture-macs
       mode: 0755
       contents:
-        inline: |
-          #!/usr/bin/env bash
-          set -ex
-          echo "Processing MAC addresses"
-          cmdline=( $(</proc/cmdline) )
-          karg() {
-              local name="$1" value="${2:-}"
-              for arg in "${cmdline[@]}"; do
-                  if [[ "${arg%%=*}" == "${name}" ]]; then
-                      value="${arg#*=}"
-                  fi
-              done
-              echo "${value}"
-          }
-          # Wait for device nodes
-          udevadm settle
-          
-          macs="$(karg macAddressList)"
-          if [[ -z $macs ]]; then
-            echo "No MAC addresses specified."
-            exit 1
-          fi
-          export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
-          export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
-          mount "/dev/disk/by-label/boot" /boot
-          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
-         
+        source: data:text/plain;charset=utf-8;base64,${base64_capture_macs_script_content}
     - path: /usr/local/bin/create-datastore
       mode: 0755
       contents:
