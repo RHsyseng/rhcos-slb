@@ -4,7 +4,7 @@ set -ex
 
 RHCOS_SLB_REPO_URL=https://github.com/coreos/coreos-assembler.git
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
-TESTS_LIST="rhcos.network.multiple-nics"
+TESTS_LIST="rhcos.network.multiple-nics rhcos.network.init-interfaces-pre-configured rhcos.network.init-interfaces-not-configured"
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
 IMAGE_PATH=/tmp/rhcos-latest-image
 SCRIPT_FOLDER=$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
@@ -116,6 +116,21 @@ modify_ignition_fcc() {
   docker run -i --rm quay.io/coreos/butane:release --pretty < "$coreos_ci_ignition_fcc" > "$coreos_ci_ignition_ign"
 }
 
+prepare_interfaces_script() {
+  local rhcos_slb_repo_path=$1
+  local rhcos_slb_script_relative_path=$2
+  local coreos_ci_repo_path=$3
+  local coreos_ci_script_relative_path=$4
+
+  local rhcos_slb_interfaces_script=${rhcos_slb_repo_path}/${rhcos_slb_script_relative_path}/init-interfaces.sh
+  local coreos_ci_interfaces_script=${coreos_ci_repo_path}/${coreos_ci_script_relative_path}/init-interfaces.sh
+
+  cp ${rhcos_slb_interfaces_script} ${coreos_ci_interfaces_script}
+
+  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
+  sed -i 's|exit 1|exit 0|g' ${coreos_ci_interfaces_script}
+}
+
 replace_network_tests() {
   local rhcos_slb_repo_path=$1
   local rhcos_slb_test_relative_path=$2
@@ -173,6 +188,14 @@ teardown() {
   cp -r ${TMP_COREOS_ASSEMBLER_PATH}/mantle/_kola_temp/* ${ARTIFACTS} || true
 }
 
+setup_test_suite() {
+  modify_ignition_fcc ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle
+
+  replace_network_tests ${RHCOS_SLB_REPO_PATH} tests ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc
+
+  prepare_interfaces_script ${RHCOS_SLB_REPO_PATH} "" ${TMP_COREOS_ASSEMBLER_PATH} mantle
+}
+
 fetch_repo ${TMP_COREOS_ASSEMBLER_PATH} ${RHCOS_SLB_REPO_URL} main
 cd ${TMP_COREOS_ASSEMBLER_PATH}
 
@@ -181,8 +204,6 @@ trap teardown EXIT SIGINT SIGTERM
 
 latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH})
 
-modify_ignition_fcc ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle
-
-replace_network_tests ${RHCOS_SLB_REPO_PATH} tests ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc
+setup_test_suite
 
 run_test_suite ${latest_image}
