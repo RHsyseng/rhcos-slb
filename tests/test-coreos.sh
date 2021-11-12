@@ -58,7 +58,20 @@ fetch_latest_rhcos_image() {
   echo ${image_path}/${image_name}
 }
 
-# modify_ignition_fcc performs some modifications on the fcc file in order to run on the coreos-ci infra
+# modify_capture_macs_script_for_tests performs modifications needed for the tests to pass on the cosa-ci platform
+modify_capture_macs_script_for_tests() {
+  local rhcos_slb_capture_macs_script=$1
+  local coreos_ci_capture_macs_script=$2
+  # Copy capture-macs.sh to coreos-ci mantle folder
+  cp ${rhcos_slb_capture_macs_script} ${coreos_ci_capture_macs_script}
+
+  # Allow /boot remount with rw permissions since in cosa-ci /boot is mounted with ro permissions.
+  sed -i 's|mount "/dev/disk/by-label/boot"|mount -o rw,remount|g' ${coreos_ci_capture_macs_script}
+
+  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
+  sed -i 's|exit 1|exit 0|g' ${coreos_ci_capture_macs_script}
+}
+
 modify_ignition_fcc() {
   local rhcos_slb_repo_path=$1
   local coreos_ci_repo_path=$2
@@ -70,17 +83,19 @@ modify_ignition_fcc() {
   local coreos_ci_ignition_fcc=${coreos_ci_repo_path}/custom-config.fcc
   local coreos_ci_ignition_ign=${coreos_ci_repo_path}/${coreos_ci_ignition_relative_path}/custom-config.ign
 
-  # Copy capture-macs.sh to coreos-ci mantle folder
-  cp ${rhcos_slb_capture_macs_script} ${coreos_ci_capture_macs_script}
-
   # Copy ignition_fcc to coreos-ci folder
   cp ${rhcos_slb_ignition_fcc_tmpl} ${coreos_ci_ignition_fcc_tmpl}
+
+  modify_capture_macs_script_for_tests ${rhcos_slb_capture_macs_script} ${coreos_ci_capture_macs_script}
 
   # Inject capture-macs script to ignition_fcc_tmpl and save it to ignition_fcc file
   export base64_capture_macs_script_content=$(cat ${coreos_ci_capture_macs_script} | base64 -w 0) && envsubst < ${coreos_ci_ignition_fcc_tmpl} > ${coreos_ci_ignition_fcc}
 
-  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
-  sed -i 's|exit 1|exit 0|g' ${coreos_ci_ignition_fcc}
+  # Plant RequiresMountsFor in capture-macs Unit requirements to ensure boot is mounted before script runs
+  sed -i 's|Description=Capture|RequiresMountsFor=/boot\n        Description=Capture|g' ${coreos_ci_ignition_fcc}
+
+  # Plant MountFlags to ensure /boot is mounted as slave
+  sed -i 's|ExecStart=/usr/local/bin/capture-macs|MountFlags=slave\n        ExecStart=/usr/local/bin/capture-macs|g' ${coreos_ci_ignition_fcc}
 
   # Remove 10-dhcp-config.conf config to not break test infra connectivity
   sed -i 's|path: /etc/NetworkManager/conf.d/10-dhcp-config.conf|path: /tmp/10-dhcp-config.conf|g' ${coreos_ci_ignition_fcc}
