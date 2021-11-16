@@ -16,6 +16,7 @@ package misc
 
 import (
 	"fmt"
+	"time"
 	"net"
 	"os"
 	"strings"
@@ -34,6 +35,7 @@ func init() {
 		Name:        "rhcos.network.multiple-nics",
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
+		Timeout:     20 * time.Minute,
 	})
 }
 
