@@ -54,7 +54,9 @@ storage:
           #!/bin/bash
 
           LABEL=datastore
-          OFFSET=120G
+          OFFSET=600G
+          LSO_LABEL=lsostore
+          LSO_OFFSET=100G
 
           set -euo pipefail
 
@@ -89,7 +91,8 @@ storage:
 
               # Relocate second GPT header to end of disk and create partition
               sgdisk --move-second-header \
-                  --new=0:+"${OFFSET}":0 --change-name=0:"${LABEL}" \
+                  --new=0:+"${OFFSET}":+"${LSO_OFFSET}" --change-name=0:"${LSO_LABEL}" \
+                  --new=0:0:0 --change-name=0:"${LABEL}" \
                   "${device}"
 
               # Wait for device node
