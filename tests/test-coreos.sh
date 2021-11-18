@@ -10,6 +10,14 @@ IMAGE_PATH=/tmp/rhcos-latest-image
 SCRIPT_FOLDER=$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
 RHCOS_SLB_REPO_PATH=${SCRIPT_FOLDER%/*}
 
+set_test_timeout() {
+	timeout_in_minutes=$1
+
+	for test_name in ${TESTS_LIST}; do
+		sed -i "s|\(Name:.*\"${test_name}\",\)|\1\n\t\tTimeout:     ${timeout_in_minutes} * time.Minute,|g" ${TMP_COREOS_ASSEMBLER_PATH}/${RHCOS_SLB_TEST_PATH}
+  done
+}
+
 create_artifacts_path() {
   local tmp_dir=$1
   export ARTIFACTS=${ARTIFACTS-${tmp_dir}/artifacts}
@@ -133,6 +141,8 @@ trap teardown EXIT SIGINT SIGTERM
 
 latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH})
 
-replace_setup_ovs_script ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc/network.go
+replace_setup_ovs_script ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} ${RHCOS_SLB_TEST_PATH}
+
+set_test_timeout 20
 
 run_test_suite ${latest_image}
