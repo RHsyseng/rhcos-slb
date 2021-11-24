@@ -130,13 +130,45 @@ func simulateNodeReboot(c cluster.TestCluster, m platform.Machine) error {
 	return nil
 }
 
+func getCaptureMacsSystemdContents() (string, error) {
+	path := "rhcos-scripts/capture-macs-systemd-units-contents"
+
+	var data, err = os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
+func getInitInterfacesSystemdContents() (string, error) {
+	path := "rhcos-scripts/init-interfaces-systemd-units-contents"
+
+	var data, err = os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
 func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac string) {
 	interfacesScript, err := getInterfacesScript()
 	if err != nil {
 		c.Fatalf("failed to read interfaces Script: %v", err)
 	}
 
+	initInterfacesSystemdInfo, err := getInitInterfacesSystemdContents()
+	if err != nil {
+		c.Fatalf("failed to read interfaces Script: %v", err)
+	}
+
 	captureMacsScript, err := getCaptureMacsScript()
+	if err != nil {
+		c.Fatalf("failed to read interfaces Script: %v", err)
+	}
+
+	captureMacsSystemdInfo, err := getCaptureMacsSystemdContents()
 	if err != nil {
 		c.Fatalf("failed to read interfaces Script: %v", err)
 	}
@@ -153,7 +185,7 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 					"mode": 755
 				},
 				{
-					"path": "/usr/local/bin/init-interfaces.sh",
+					"path": "/var/init-interfaces.sh",
 					"contents": { "source": "data:text/plain;base64,%s" },
 					"mode": 755
 				}
@@ -162,12 +194,12 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 		"systemd": {
 			"units": [
 				{
-					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nBefore=coreos-installer.target\nAfter=coreos-installer.service\n\nConditionKernelCommandLine=macAddressList\nRequiresMountsFor=/boot\n\n[Service]\nType=oneshot\nMountFlags=slave\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
+					"contents": "%s",
 					"enabled": true,
 					"name": "capture-macs.service"
 				},
 				{
-					"contents": "[Unit]\nDescription=Initialize Interfaces\nBefore=kubelet.service\nAfter=NetworkManager.service\nAfter=capture-macs.service\n\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/init-interfaces.sh\n\n[Install]\nRequiredBy=multi-user.target\n",
+					"contents": "%s",
 					"enabled": true,
 					"name": "setup-ovs.service"
 				}
@@ -175,7 +207,9 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 		}
 	}`,
 		base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
-		base64.StdEncoding.EncodeToString([]byte(interfacesScript))))
+		base64.StdEncoding.EncodeToString([]byte(interfacesScript)),
+		strings.Replace(captureMacsSystemdInfo, "\n", "\\n", -1),
+		strings.Replace(initInterfacesSystemdInfo, "\n", "\\n", -1)))
 
 	options := platform.QemuMachineOptions{
 		MachineOptions: platform.MachineOptions{
@@ -203,7 +237,7 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 }
 
 func getInterfacesScript() (string, error) {
-	path := "init-interfaces.sh"
+	path := "rhcos-scripts/init-interfaces.sh"
 
 	var data, err = os.ReadFile(path)
 	if err != nil {
@@ -214,7 +248,7 @@ func getInterfacesScript() (string, error) {
 }
 
 func getCaptureMacsScript() (string, error) {
-	path := "capture-macs.sh"
+	path := "rhcos-scripts/capture-macs.sh"
 
 	var data, err = os.ReadFile(path)
 	if err != nil {
@@ -401,7 +435,7 @@ func addKernelArgs(c cluster.TestCluster, m platform.Machine, args []string) {
 }
 
 func getUserData(c cluster.TestCluster) (string, error) {
-	path := "custom-config.ign"
+	path := "rhcos-scripts/custom-config.ign"
 
 	var data, err = os.ReadFile(path)
 	if err != nil {
