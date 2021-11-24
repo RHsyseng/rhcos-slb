@@ -4,11 +4,13 @@ set -ex
 
 RHCOS_SLB_REPO_URL=https://github.com/coreos/coreos-assembler.git
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
-TESTS_LIST="rhcos.network.multiple-nics rhcos.network.init-interfaces-pre-configured rhcos.network.init-interfaces-not-configured"
+TESTS_LIST=(rhcos.network.multiple-nics rhcos.network.init-interfaces-test)
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
 IMAGE_PATH=/tmp/rhcos-latest-image
 SCRIPT_FOLDER=$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
 RHCOS_SLB_REPO_PATH=${SCRIPT_FOLDER%/*}
+
+source ${SCRIPT_FOLDER}/yaml-utils.sh
 
 create_artifacts_path() {
   local tmp_dir=$1
@@ -58,90 +60,29 @@ fetch_latest_rhcos_image() {
   echo ${image_path}/${image_name}
 }
 
-# modify_capture_macs_script_for_tests performs modifications needed for the tests to pass on the cosa-ci platform
-modify_capture_macs_script_for_tests() {
-  local rhcos_slb_capture_macs_script=$1
-  local coreos_ci_capture_macs_script=$2
-  # Copy capture-macs.sh to coreos-ci mantle folder
-  cp ${rhcos_slb_capture_macs_script} ${coreos_ci_capture_macs_script}
+prepare_ignition() {
+  local coreos_ci_scripts_path=$1
+  local capture_macs_script=${coreos_ci_scripts_path}/capture-macs.sh
+  local create_datastore_script=${coreos_ci_scripts_path}/create-datastore.sh
+  local ignition_fcc_tmpl=${coreos_ci_scripts_path}/custom-config.fcc.tmpl
+  local ignition_fcc=${coreos_ci_scripts_path}/custom-config.fcc
+  local ignition_ign=${coreos_ci_scripts_path}/custom-config.ign
 
-  # Allow /boot remount with rw permissions since in cosa-ci /boot is mounted with ro permissions.
-  sed -i 's|mount "/dev/disk/by-label/boot"|mount -o rw,remount|g' ${coreos_ci_capture_macs_script}
-
-  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
-  sed -i 's|exit 1|exit 0|g' ${coreos_ci_capture_macs_script}
-}
-
-modify_ignition_fcc() {
-  local rhcos_slb_repo_path=$1
-  local coreos_ci_repo_path=$2
-  local coreos_ci_ignition_relative_path=$3
-  local rhcos_slb_capture_macs_script=${rhcos_slb_repo_path}/capture-macs.sh
-  local coreos_ci_capture_macs_script=${coreos_ci_repo_path}/mantle/capture-macs.sh
-  local rhcos_slb_ignition_fcc_tmpl=${rhcos_slb_repo_path}/custom-config.fcc.tmpl
-  local coreos_ci_ignition_fcc_tmpl=${coreos_ci_repo_path}/custom-config.fcc.tmpl
-  local coreos_ci_ignition_fcc=${coreos_ci_repo_path}/custom-config.fcc
-  local coreos_ci_ignition_ign=${coreos_ci_repo_path}/${coreos_ci_ignition_relative_path}/custom-config.ign
-
-  # Copy ignition_fcc to coreos-ci folder
-  cp ${rhcos_slb_ignition_fcc_tmpl} ${coreos_ci_ignition_fcc_tmpl}
-
-  modify_capture_macs_script_for_tests ${rhcos_slb_capture_macs_script} ${coreos_ci_capture_macs_script}
-
-  # Inject capture-macs script to ignition_fcc_tmpl and save it to ignition_fcc file
-  export base64_capture_macs_script_content=$(cat ${coreos_ci_capture_macs_script} | base64 -w 0) && envsubst < ${coreos_ci_ignition_fcc_tmpl} > ${coreos_ci_ignition_fcc}
-
-  # Plant RequiresMountsFor in capture-macs Unit requirements to ensure boot is mounted before script runs
-  sed -i 's|Description=Capture|RequiresMountsFor=/boot\n        Description=Capture|g' ${coreos_ci_ignition_fcc}
-
-  # Plant MountFlags to ensure /boot is mounted as slave
-  sed -i 's|ExecStart=/usr/local/bin/capture-macs|MountFlags=slave\n        ExecStart=/usr/local/bin/capture-macs|g' ${coreos_ci_ignition_fcc}
-
-  # Remove 10-dhcp-config.conf config to not break test infra connectivity
-  sed -i 's|path: /etc/NetworkManager/conf.d/10-dhcp-config.conf|path: /tmp/10-dhcp-config.conf|g' ${coreos_ci_ignition_fcc}
-
-  # Remove ConditionKernelCommandLine that is not used
-  sed -i 's|ConditionKernelCommandLine=custom-config||g' ${coreos_ci_ignition_fcc}
-
-  # Remove Before systemd condition, as coreos-*.targets are not used on the tested image
-  sed -i 's|Before=coreos-installer.target||g' ${coreos_ci_ignition_fcc}
-
-  # Replace After systemd condition, as coreos-*.targets are not used on the tested image
-  sed -i 's|After=create-datastore.service|After=network-online.target|g' ${coreos_ci_ignition_fcc}
-
-  # Replace RequiredBy systemd condition, as coreos-*.targets are not used on the tested image
-  sed -i 's|RequiredBy=coreos-installer.target|RequiredBy=multi-user.target|g' ${coreos_ci_ignition_fcc}
+  # Inject scripts to ignition_fcc_tmpl and save it to ignition_fcc file
+  export base64_capture_macs_script_content=$(cat ${capture_macs_script} | base64 -w 0) && \
+  export base64_create_datastore_script_content=$(cat ${create_datastore_script} | base64 -w 0) && \
+  envsubst < ${ignition_fcc_tmpl} > ${ignition_fcc}
 
   # Finally, convert ignition_fcc to ign format on the coreos-ci repo
-  docker run -i --rm quay.io/coreos/butane:release --pretty < "$coreos_ci_ignition_fcc" > "$coreos_ci_ignition_ign"
-}
-
-prepare_interfaces_script() {
-  local rhcos_slb_repo_path=$1
-  local rhcos_slb_script_relative_path=$2
-  local coreos_ci_repo_path=$3
-  local coreos_ci_script_relative_path=$4
-
-  local rhcos_slb_interfaces_script=${rhcos_slb_repo_path}/${rhcos_slb_script_relative_path}/init-interfaces.sh
-  local coreos_ci_interfaces_script=${coreos_ci_repo_path}/${coreos_ci_script_relative_path}/init-interfaces.sh
-
-  cp ${rhcos_slb_interfaces_script} ${coreos_ci_interfaces_script}
-
-  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
-  sed -i 's|exit 1|exit 0|g' ${coreos_ci_interfaces_script}
+  docker run -i --rm quay.io/coreos/butane:release --pretty < "$ignition_fcc" > "$ignition_ign"
 }
 
 replace_network_tests() {
-  local rhcos_slb_repo_path=$1
-  local rhcos_slb_test_relative_path=$2
-  local coreos_ci_repo_path=$3
-  local coreos_ci_test_relative_path=$4
-
-  local rhcos_slb_network_test=${rhcos_slb_repo_path}/${rhcos_slb_test_relative_path}/network.go
-  local coreos_ci_network_test=${coreos_ci_repo_path}/${coreos_ci_test_relative_path}/network.go
+  local rhcos_slb_test_path=$1
+  local coreos_ci_test_path=$2
 
   # Copy network test to coreos-ci
-  cp --remove-destination ${rhcos_slb_network_test} ${coreos_ci_network_test}
+  cp --remove-destination ${rhcos_slb_test_path} ${coreos_ci_test_path}
 }
 
 generate_junit_from_tap_file() {
@@ -166,7 +107,7 @@ expect_tests_to_succeed() {
 run_tests() {
   local latest_image=$1
   local test_output=$2
-  ./bin/kola run -b rhcos --qemu-image ${latest_image} ${TESTS_LIST} >${test_output}
+  ./bin/kola run -b rhcos --qemu-image "${latest_image}" "${TESTS_LIST[@]}" >"${test_output}"
 }
 
 run_test_suite() {
@@ -188,12 +129,140 @@ teardown() {
   cp -r ${TMP_COREOS_ASSEMBLER_PATH}/mantle/_kola_temp/* ${ARTIFACTS} || true
 }
 
+copy_segment_interfaces_systemd_units_contents() {
+  local mco=$1
+  local systemd_units_contents_file=$2
+
+  # extract the systemd.unit segment from mco template for script-specific tests
+  yaml-utils::yq ".spec.config.systemd.units[] | select(.name == \"setup-ovs.service\") | .contents" "${mco}" > "${systemd_units_contents_file}"
+  if [[ ! -s "${systemd_units_contents_file}" ]]; then
+    echo "error: ${systemd_units_contents_file} file empty or does not exists"
+    exit 1
+  fi
+}
+
+modify_interfaces_script_for_tests() {
+  local interfaces_script=$1
+
+  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
+  sed -i 's|exit 1|exit 0|g' ${interfaces_script}
+}
+
+prepare_init_interfaces() {
+  local scripts_path=$1
+
+  modify_interfaces_script_for_tests ${scripts_path}/init-interfaces.sh
+
+  modify_interfaces_systemd_units_contents ${scripts_path}/mco_ovs_workers.yml.tmpl
+
+  copy_segment_interfaces_systemd_units_contents ${scripts_path}/mco_ovs_workers.yml.tmpl ${scripts_path}/init-interfaces-systemd-units-contents
+}
+
+# modify_capture_macs_script_for_tests performs modifications needed for the tests to pass on the cosa-ci platform
+modify_capture_macs_script_for_tests() {
+  local capture_macs_script=$1
+
+  # Allow /boot remount with rw permissions since in cosa-ci /boot is mounted with ro permissions.
+  sed -i 's|mount "/dev/disk/by-label/boot"|mount -o rw,remount|g' ${capture_macs_script}
+
+  # Remove the exit fail if macs file in not in place, since kargs are added only after second reboot.
+  sed -i 's|exit 1|exit 0|g' ${capture_macs_script}
+}
+
+modify_interfaces_systemd_units_contents() {
+  local mco=$1
+
+  # schedule the script to run after capture-macs.service
+  sed -i 's|After=NetworkManager.service|After=NetworkManager.service capture-macs.service|g' ${mco}
+}
+
+copy_segment_captured_macs_systemd_units_contents() {
+  local config_fcc=$1
+  local systemd_units_contents_file=$2
+
+  # extract the systemd.units.contents segment from custom-config template for script-specific tests
+  echo "$(yaml-utils::yq ".systemd.units[] | select(.name == \"capture-macs.service\") | .contents" "${config_fcc}")" > ${systemd_units_contents_file}
+  if [[ ! -s "${systemd_units_contents_file}" ]]; then
+    echo "error: ${systemd_units_contents_file} file empty or does not exists"
+    exit 1
+  fi
+}
+
+modify_capture_macs_systemd_units_contents() {
+  local config_fcc=$1
+
+  # Plant RequiresMountsFor in capture-macs Unit requirements to ensure boot is mounted before script runs
+  sed -i 's|Description=Capture|RequiresMountsFor=/boot\n        Description=Capture|g' ${config_fcc}
+
+  # Plant MountFlags to ensure /boot is mounted as slave
+  sed -i 's|ExecStart=/usr/local/bin/capture-macs|MountFlags=slave\n        ExecStart=/usr/local/bin/capture-macs|g' ${config_fcc}
+
+  # Remove ConditionKernelCommandLine that is not used
+  sed -i 's|ConditionKernelCommandLine=custom-config||g' ${config_fcc}
+
+  # Replace RequiredBy systemd condition, as coreos-*.targets are not used on the tested image
+  sed -i 's|RequiredBy=coreos-installer.target|RequiredBy=multi-user.target|g' ${config_fcc}
+}
+
+prepare_capture_macs() {
+  local scripts_path=$1
+
+  modify_capture_macs_script_for_tests ${scripts_path}/capture-macs.sh
+
+  modify_capture_macs_systemd_units_contents ${scripts_path}/custom-config.fcc.tmpl ${scripts_path}/capture-macs-systemd-units-contents
+
+  copy_segment_captured_macs_systemd_units_contents ${scripts_path}/custom-config.fcc.tmpl ${scripts_path}/capture-macs-systemd-units-contents
+}
+
+prepare_dhcp_config() {
+  local scripts_path=$1
+
+  # Remove 10-dhcp-config.conf config to not break test infra connectivity
+  sed -i 's|path: /etc/NetworkManager/conf.d/10-dhcp-config.conf|path: /tmp/10-dhcp-config.conf|g' ${scripts_path}/custom-config.fcc.tmpl
+}
+
+copy_relevant_scripts_to_coreos_folder() {
+  local rhcos_slb_repo_path=$1
+  local coreos_ci_scripts_path=$2
+
+  mkdir -p ${coreos_ci_scripts_path}
+
+  # Copy ignition_fcc template to coreos-ci scripts folder
+  cp ${rhcos_slb_repo_path}/custom-config.fcc.tmpl ${coreos_ci_scripts_path}
+
+  # Copy capture-macs.sh to coreos-ci scripts folder
+  cp ${rhcos_slb_repo_path}/capture-macs.sh ${coreos_ci_scripts_path}
+
+  # Copy init-interfaces.sh to coreos-ci scripts folder
+  cp ${rhcos_slb_repo_path}/init-interfaces.sh ${coreos_ci_scripts_path}
+
+  # Copy create-datastore.sh to coreos-ci scripts folder
+  cp ${rhcos_slb_repo_path}/create-datastore.sh ${coreos_ci_scripts_path}
+
+  # Copy mco_ovs_workers.yml.tmpl to coreos-ci scripts folder
+  cp ${rhcos_slb_repo_path}/mco_ovs_workers.yml.tmpl ${coreos_ci_scripts_path}
+}
+
+prepare_scripts_for_tests() {
+  local coreos_ci_scripts_path=$1
+
+  prepare_capture_macs ${coreos_ci_scripts_path}
+
+  prepare_init_interfaces ${coreos_ci_scripts_path}
+
+  prepare_dhcp_config ${coreos_ci_scripts_path}
+
+  prepare_ignition ${coreos_ci_scripts_path}
+}
+
 setup_test_suite() {
-  modify_ignition_fcc ${RHCOS_SLB_REPO_PATH} ${TMP_COREOS_ASSEMBLER_PATH} mantle
+  local coreos_ci_scripts_path=${TMP_COREOS_ASSEMBLER_PATH}/mantle/rhcos-scripts
 
-  replace_network_tests ${RHCOS_SLB_REPO_PATH} tests ${TMP_COREOS_ASSEMBLER_PATH} mantle/kola/tests/misc
+  replace_network_tests "${RHCOS_SLB_REPO_PATH}"/tests/network.go "${TMP_COREOS_ASSEMBLER_PATH}"/"${RHCOS_SLB_TEST_PATH}"
 
-  prepare_interfaces_script ${RHCOS_SLB_REPO_PATH} "" ${TMP_COREOS_ASSEMBLER_PATH} mantle
+  copy_relevant_scripts_to_coreos_folder ${RHCOS_SLB_REPO_PATH} ${coreos_ci_scripts_path}
+
+  prepare_scripts_for_tests ${coreos_ci_scripts_path}
 }
 
 fetch_repo ${TMP_COREOS_ASSEMBLER_PATH} ${RHCOS_SLB_REPO_URL} main
