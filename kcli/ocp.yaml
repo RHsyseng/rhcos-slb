@@ -1,0 +1,35 @@
+parameters:
+ vmrules:
+ - rhocs-slb-master-0:
+    cmds: 
+    - echo redhat | passwd --stdin core
+    cmdline: custom-config macAddressList=52:54:00:f6:80:01,52:54:00:f6:80:02
+    nets: 
+    - name: default
+      mac: 52:54:00:f6:80:01
+    - name: default
+      mac: 52:54:00:f6:80:02
+ - rhocs-slb-worker-0:
+    cmds: 
+    - echo redhat | passwd --stdin core
+    cmdline: custom-config macAddressList=52:54:00:f6:80:03,52:54:00:f6:80:04
+    nets: 
+    - name: default
+      mac: 52:54:00:f6:80:03
+    - name: default
+      mac: 52:54:00:f6:80:04
+
+rhocs-slb:
+ type: kube
+ kubetype: openshift
+ domain: qinqon.com
+ version: nightly
+ tag: '4.10'
+ masters: 1
+ workers: 1
+ memory: 16384
+ numcpus: 16
+ postscripts:
+   - kcli/deploy-knmstate.sh
+     #apps:
+     #   - kubernetes-nmstate-operator

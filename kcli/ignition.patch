@@ -1,0 +1,48 @@
+diff --git a/capture-macs.sh b/capture-macs.sh
+index 17e7f81..33532c1 100644
+--- a/capture-macs.sh
++++ b/capture-macs.sh
+@@ -24,5 +24,5 @@ fi
+ 
+ export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
+ export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
+-mount "/dev/disk/by-label/boot" /boot
++mount -o remount,rw "/dev/disk/by-label/boot" /boot
+ echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
+diff --git a/custom-config.fcc.tmpl b/custom-config.fcc.tmpl
+index ee06e0e..eb7fcf6 100644
+--- a/custom-config.fcc.tmpl
++++ b/custom-config.fcc.tmpl
+@@ -73,8 +73,22 @@ storage:
+           fi
+ systemd:
+   units:
+-    - name: capture-macs.service
++    - name: capture-macs-kcli.service
+       enabled: true
++      contents: |
++        [Unit]
++        Description=Capture MAC address from kargs
++        ConditionKernelCommandLine=custom-config
++
++        [Service]
++        Type=oneshot
++        ExecStart=/usr/local/bin/capture-macs
++        StandardOutput=journal
++
++        [Install]
++        WantedBy=multi-user.target
++    - name: capture-macs.service
++      enabled: false
+       contents: |
+         [Unit]
+         Description=Capture MAC address from kargs
+@@ -89,7 +103,7 @@ systemd:
+         [Install]
+         RequiredBy=coreos-installer.target
+     - name: create-datastore.service
+-      enabled: true
++      enabled: false
+       contents: |
+         [Unit]
+         Description=Create data partition if one doesn't already exist
