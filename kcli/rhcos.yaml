@@ -1,0 +1,14 @@
+parameters:
+ vmrules:
+ - rhocs-slb:
+    cmdline: custom-config macAddressList=52:54:00:f6:80:11,52:54:00:f6:80:12
+    cmds: 
+    - echo redhat | passwd --stdin core
+    nets: 
+    - name: default
+      mac: 52:54:00:f6:80:11
+    - name: default
+      mac: 52:54:00:f6:80:12
+
+rhocs-slb:
+ image: rhcos-410.84.202112040202-0-qemu.x86_64.qcow2 
