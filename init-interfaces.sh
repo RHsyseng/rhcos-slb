@@ -81,10 +81,11 @@ if eval ! is_con_exists "\"$secondary_connection_name\""; then
   secondary_connection_name="$(generate_new_con_name "$secondary_device")" && export secondary_connection_name
   nmcli con add type ethernet \
                 conn.interface "$secondary_device" \
-                connection.autoconnect no \
+                connection.autoconnect yes \
                 ipv4.method disabled \
+                ipv6.method disabled \
                 con-name "$secondary_connection_name"
 fi
-if eval is_con_active "\"$secondary_connection_name\""; then
-  nmcli con down "$secondary_connection_name"
+if eval ! is_con_active "\"$secondary_connection_name\""; then
+  nmcli con up "$secondary_connection_name"
 fi
