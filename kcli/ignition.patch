@@ -1,17 +1,19 @@
-diff --git a/custom-config.fcc b/custom-config.fcc
-index 93316d9..35ae755 100644
---- a/custom-config.fcc
-+++ b/custom-config.fcc
-@@ -44,7 +44,7 @@ storage:
-           fi
-           export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
-           export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
--          mount "/dev/disk/by-label/boot" /boot
-+          mount -o remount,rw "/dev/disk/by-label/boot" /boot
-           echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
-          
-     - path: /usr/local/bin/create-datastore
-@@ -99,8 +99,22 @@ storage:
+diff --git a/capture-macs.sh b/capture-macs.sh
+index 17e7f81..33532c1 100644
+--- a/capture-macs.sh
++++ b/capture-macs.sh
+@@ -24,5 +24,5 @@ fi
+ 
+ export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
+ export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
+-mount "/dev/disk/by-label/boot" /boot
++mount -o remount,rw "/dev/disk/by-label/boot" /boot
+ echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
+diff --git a/custom-config.fcc.tmpl b/custom-config.fcc.tmpl
+index ee06e0e..eb7fcf6 100644
+--- a/custom-config.fcc.tmpl
++++ b/custom-config.fcc.tmpl
+@@ -73,8 +73,22 @@ storage:
            fi
  systemd:
    units:
@@ -35,7 +37,7 @@ index 93316d9..35ae755 100644
        contents: |
          [Unit]
          Description=Capture MAC address from kargs
-@@ -115,7 +129,7 @@ systemd:
+@@ -89,7 +103,7 @@ systemd:
          [Install]
          RequiredBy=coreos-installer.target
      - name: create-datastore.service
