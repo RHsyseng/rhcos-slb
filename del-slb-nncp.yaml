@@ -1,0 +1,27 @@
+apiVersion: nmstate.io/v1                                                       
+kind: NodeNetworkConfigurationPolicy                                            
+metadata:                                                                       
+  name: slb
+spec:
+  capture:
+    primary-nic: interfaces.description == "primary"
+    secondary-nic: interfaces.description == "secondary"
+  desiredState:
+    interfaces:
+    - name: brcnv-iface
+      type: ovs-interface
+      state: absent
+    - name: brcnv
+      type: ovs-bridge
+      state: absent
+    - name: "{{ capture.primary-nic.interfaces.0.name }}"
+      type: ethernet
+      state: up
+      ipv4:
+        enabled: true
+        dhcp: true
+    - name: "{{ capture.secondary-nic.interfaces.0.name }}"
+      type: ethernet
+      state: up
+      ipv4:
+        enabled: false
