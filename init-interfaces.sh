@@ -30,6 +30,21 @@ generate_new_con_name() {
   printf "ethernet-%s-%s" "$device_name" "$RANDOM"
 }
 
+set_description() {
+  local nic=$1
+  local description=$2
+  local cons=$(grep -l "interface-name=$nic" /etc/NetworkManager/system-connections/*)
+  for c in $cons; do
+      if ! grep nmstate.interface.description $c; then
+         echo "" >> $c
+         echo "[user]" >> $c
+         echo nmstate.interface.description=$description >> $c
+      else
+         sed -i "s/nmstate\.interface\.description=.*/nmstate.interface.description=$description/" $c
+      fi
+done
+}
+
 if [[ ! -f /boot/mac_addresses ]] ; then
   echo "no mac address configuration file found .. exiting"
   exit 1
@@ -89,3 +104,8 @@ fi
 if eval ! is_con_active "\"$secondary_connection_name\""; then
   nmcli con up "$secondary_connection_name"
 fi
+
+set_description "$default_device" primary
+set_description "$secondary_device" secondary
+
+nmcli c reload
