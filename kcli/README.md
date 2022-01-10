@@ -20,10 +20,20 @@ init cmdline to specify `custom-config` with mac addresses, and apply patched
 ignition (it disable create-datastore and remove systemd dependencies at 
 capture-macs.sh unit) and the machince config with the OVS bridge setup.
 
+Start the cluster
 ```bash
 ./kcli/run.sh ./kcli/ocp.yaml openshift-pull.json
 ```
 
+Configure the bond with kubernetes-nmstate
+```bash
+./kcli/add-slb.sh
+```
+
+Remove the bond with kubernetes-nmstate
+```bash
+./kcli/del-slb.sh
+```
 
 ### Start a RHCOS 4.10 image with ignition
 
