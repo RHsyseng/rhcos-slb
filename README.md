@@ -48,10 +48,13 @@ export base64_script_content=$(cat init-interfaces.sh|base64 -w 0) && envsubst <
 - Follow the guide to install a bare-metal cluster in the [OpenShift production documentation.
 ](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.7/html/installing/installing-on-bare-metal)
 
+### 4. Apply the kubernetes-nmstate NNCP Bond configuration
+- Create bond by adding a NNCP with `oc apply -f add-slb-nncp.yaml`
+
 ## Notes
 - Basic network configuration is set with the `init-interfaces.sh` file, which run via MCO files. MCO files are MachineConfig, which you can apply manually once the cluster is up or add it to the installation automation/pipeline. MachineConfig file is a "Day 2" tool that allows to configure or run scripts on a machine with an installed OS (post-installation).
-
-- Bond configuration is set via kubernetes-nmstate manifests (TBD).
+- To delete the bond run `oc delete nncp --all && oc apply -f del-slb-nncp.yaml`.
+- The add-slb-nncp.yaml and del-slb-nncp.yaml can be found at this repository.
 
 ## CI and Testing
 This repo uses [coreos-assembler repo](https://github.com/coreos/coreos-assembler) to run important scenarios relevant to this use-case.
