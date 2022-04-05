@@ -20,20 +20,25 @@ is_con_active() {
 
 get_con_name_by_device() {
   local dev_name=$1
-  local con_name
-  con_name=$(nmcli -g GENERAL.CONNECTION dev show "$dev_name")
-  echo "$con_name"
+  local mac=$(echo $2 | sed -e 's/\\\|://g')
+  while read -r con; do
+    if [[ "$(nmcli -g 802-3-ethernet.mac-address c show "${con}" | tr '[A-Z]' '[a-z]' | sed -e 's/\\\|://g')" == "$mac" ]]; then
+      echo "${con}"
+      break
+    fi
+  done <<< "$(nmcli -g NAME c show)"
 }
 
 generate_new_con_name() {
   local device_name=$1
+  #printf "ethernet-%s-%s" "$device_name" "$RANDOM"
   printf "ethernet-%s-%s" "$device_name" "$RANDOM"
 }
 
 set_description() {
-  local nic=$1
+  local mac=$1
   local description=$2
-  local cons=$(grep -l "interface-name=$nic" /etc/NetworkManager/system-connections/*)
+  local cons=$(grep -l -i "mac-address=$mac" /etc/NetworkManager/system-connections/*)
   for c in $cons; do
       if ! grep nmstate.interface.description $c; then
          echo "" >> $c
@@ -63,11 +68,11 @@ for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
   case $dev_mac in
     $primary_mac)
       default_device="$dev"
-      default_connection_name=$(get_con_name_by_device "$dev")
+      default_connection_name=$(get_con_name_by_device "$dev" "$primary_mac")
       ;;
     $secondary_mac)
       secondary_device="$dev"
-      secondary_connection_name=$(get_con_name_by_device "$dev")
+      secondary_connection_name=$(get_con_name_by_device "$dev" "$secondary_mac")
       ;;
     *)
       ;;
@@ -86,7 +91,8 @@ if eval ! is_con_exists "\"$default_connection_name\""; then
                 conn.interface "$default_device" \
                 connection.autoconnect yes \
                 ipv4.method auto \
-                con-name "$default_connection_name"
+                con-name "$default_connection_name" \
+                802-3-ethernet.mac-address $primary_mac
 fi
 if eval ! is_con_active "\"$default_connection_name\""; then
   nmcli con up "$default_connection_name"
@@ -99,13 +105,14 @@ if eval ! is_con_exists "\"$secondary_connection_name\""; then
                 connection.autoconnect yes \
                 ipv4.method disabled \
                 ipv6.method disabled \
-                con-name "$secondary_connection_name"
+                con-name "$secondary_connection_name" \
+                802-3-ethernet.mac-address $secondary_mac
 fi
 if eval ! is_con_active "\"$secondary_connection_name\""; then
   nmcli con up "$secondary_connection_name"
 fi
 
-set_description "$default_device" primary
-set_description "$secondary_device" secondary
+set_description "$primary_mac" primary
+set_description "$secondary_mac" secondary
 
 nmcli c reload
