@@ -8,7 +8,7 @@ spec:
     secondary-nic: interfaces.description == "secondary"
   desiredState:
     interfaces:
-    - name: brcnv-iface
+    - name: brcnv
       type: ovs-interface
       state: absent
     - name: brcnv

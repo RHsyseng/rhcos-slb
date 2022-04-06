@@ -8,7 +8,7 @@ spec:
     secondary-nic: interfaces.description == "secondary"
   desiredState:
     interfaces:
-    - name: brcnv-iface
+    - name: brcnv
       type: ovs-interface
       state: up
       mac-address: "{{ capture.primary-nic.interfaces.0.mac-address }}"
@@ -30,4 +30,4 @@ spec:
             port:
             - name: "{{ capture.primary-nic.interfaces.0.name }}"
             - name: "{{ capture.secondary-nic.interfaces.0.name }}"
-        - name: brcnv-iface
+        - name: brcnv
