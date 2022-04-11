@@ -160,7 +160,7 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 				{
 					"contents": "[Unit]\nDescription=Initialize Interfaces\nBefore=kubelet.service\nAfter=NetworkManager.service\nAfter=capture-macs.service\n\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/init-interfaces.sh\n\n[Install]\nRequiredBy=multi-user.target\n",
 					"enabled": true,
-					"name": "init-interfaces.service"
+					"name": "setup-ovs.service"
 				}
 			]
 		}
