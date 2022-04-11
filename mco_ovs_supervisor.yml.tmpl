@@ -10,9 +10,6 @@ spec:
       version: 3.1.0
     systemd:
       units:
-        - contents:
-          name: setup-ovs.service
-          enabled: false
         - contents: |
             [Unit]
             Before=kubelet.service
@@ -22,7 +19,7 @@ spec:
             ExecStart=/bin/sh /var/init-interfaces.sh
             [Install]
             WantedBy=multi-user.target
-          name: init-interfaces.service
+          name: setup-ovs.service
           enabled: true
     storage:
       files:
