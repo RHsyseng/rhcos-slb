@@ -2,6 +2,10 @@
 
 set -ex
 
+is_configured() {
+  [[ $(grep primary /etc/NetworkManager/system-connections/* | wc -l) -ge 1 && $(grep secondary /etc/NetworkManager/system-connections/* | wc -l) -ge 1 ]]
+}
+
 is_con_exists() {
   local con_name=$1
   if nmcli -t -g NAME con show | grep -w -q "$con_name"; then
@@ -18,11 +22,15 @@ is_con_active() {
   return 1 # false
 }
 
-get_con_name_by_device() {
-  local dev_name=$1
-  local con_name
-  con_name=$(nmcli -g GENERAL.CONNECTION dev show "$dev_name")
-  echo "$con_name"
+get_con_name_by_mac_or_device() {
+  local mac=$(echo $1 | sed -e 's/\\\|://g')
+  local dev_name=$2
+  while read -r con; do
+    if [[ "$(nmcli -g 802-3-ethernet.mac-address c show "${con}" | tr '[A-Z]' '[a-z]' | sed -e 's/\\\|://g')" == "$mac" || $(nmcli -g connection.interface-name c show "${con}") == "${dev_name}" ]]; then
+      echo "${con}"
+      break
+    fi
+  done <<< "$(nmcli -g NAME c show)"
 }
 
 generate_new_con_name() {
@@ -31,9 +39,10 @@ generate_new_con_name() {
 }
 
 set_description() {
-  local nic=$1
-  local description=$2
-  local cons=$(grep -l "interface-name=$nic" /etc/NetworkManager/system-connections/*)
+  local mac=$1
+  local nic=$2
+  local description=$3
+  local cons=$(egrep -l -i "mac-address=$mac|interface-name=$nic" $(egrep -l "type=ethernet" /etc/NetworkManager/system-connections/*))
   for c in $cons; do
       if ! grep nmstate.interface.description $c; then
          echo "" >> $c
@@ -50,6 +59,11 @@ if [[ ! -f /boot/mac_addresses ]] ; then
   exit 1
 fi
 
+if is_configured; then
+  echo "interfaces already configured"
+  exit 0
+fi
+
 primary_mac="$(awk -F= '/PRIMARY_MAC/ {print $2}' < /boot/mac_addresses | tr '[:upper:]' '[:lower:]')"
 secondary_mac="$(awk -F= '/SECONDARY_MAC/ {print $2}' < /boot/mac_addresses | tr '[:upper:]' '[:lower:]')"
 
@@ -63,11 +77,11 @@ for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
   case $dev_mac in
     $primary_mac)
       default_device="$dev"
-      default_connection_name=$(get_con_name_by_device "$dev")
+      default_connection_name=$(get_con_name_by_mac_or_device "$primary_mac" "$dev")
       ;;
     $secondary_mac)
       secondary_device="$dev"
-      secondary_connection_name=$(get_con_name_by_device "$dev")
+      secondary_connection_name=$(get_con_name_by_mac_or_device "$secondary_mac" "$dev")
       ;;
     *)
       ;;
@@ -105,7 +119,8 @@ if eval ! is_con_active "\"$secondary_connection_name\""; then
   nmcli con up "$secondary_connection_name"
 fi
 
-set_description "$default_device" primary
-set_description "$secondary_device" secondary
+set_description "$primary_mac" "$default_device" primary
+set_description "$secondary_mac" "$secondary_device" secondary
 
 nmcli c reload
+
