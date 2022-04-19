@@ -100,7 +100,8 @@ if eval ! is_con_exists "\"$default_connection_name\""; then
                 conn.interface "$default_device" \
                 connection.autoconnect yes \
                 ipv4.method auto \
-                con-name "$default_connection_name"
+                con-name "$default_connection_name" \
+                802-3-ethernet.mac-address $primary_mac
 fi
 if eval ! is_con_active "\"$default_connection_name\""; then
   nmcli con up "$default_connection_name"
@@ -113,7 +114,8 @@ if eval ! is_con_exists "\"$secondary_connection_name\""; then
                 connection.autoconnect yes \
                 ipv4.method disabled \
                 ipv6.method disabled \
-                con-name "$secondary_connection_name"
+                con-name "$secondary_connection_name" \
+                802-3-ethernet.mac-address $secondary_mac
 fi
 if eval ! is_con_active "\"$secondary_connection_name\""; then
   nmcli con up "$secondary_connection_name"
