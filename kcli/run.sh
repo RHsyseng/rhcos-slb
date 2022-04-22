@@ -1,6 +1,4 @@
 #!/bin/bash -e
-plan=$1
-openshift_pull=$2
 
 tmpdir=$(mktemp -d)
 
@@ -14,11 +12,6 @@ butane() {
 trap 'rm -rf -- "$tmpdir"'  EXIT
 
 cp -r * $tmpdir
-
-
-if [ "$openshift_pull" != "" ]; then
-    cp $openshift_pull $tmpdir/openshift_pull.json
-fi
 
 cd $tmpdir
 
@@ -34,4 +27,13 @@ export base64_script_content=$(cat init-interfaces.sh|base64 -w 0)
 envsubst <  mco_ovs_workers.yml.tmpl > manifests/mco_ovs_workers.yml 
 envsubst < mco_ovs_supervisor.yml.tmpl > manifests/mco_ovs_supervisor.yml
 
-kcli create plan --force -f $plan rhcos-slb
+if [[ $0 =~ run.sh ]]; then
+    plan=$1
+    openshift_pull=$2
+    if [ "$openshift_pull" != "" ]; then
+        cp $openshift_pull $tmpdir/openshift_pull.json
+    fi
+    kcli create plan --force -f $plan rhcos-slb
+elif [[ $0 =~ apply.sh ]]; then
+    oc apply $tmpdir/manifests
+fi

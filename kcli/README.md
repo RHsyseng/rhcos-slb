@@ -35,6 +35,13 @@ Remove the bond with kubernetes-nmstate
 ./kcli/del-slb.sh
 ```
 
+To apply changes on already deployed cluster.
+```bash
+./kcli/apply.sh
+./kcli/deploy-knmstate.sh
+./kcli/add-slb.sh
+```
+
 ### Start a RHCOS 4.10 image with ignition
 
 To do a quick test just for ingition + kernel cmdline is possible to start a 
