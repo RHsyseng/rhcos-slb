@@ -17,22 +17,22 @@ machine config here.
 
 This will start a two nodes cluster (supervisor/worker) passing the expected 
 init cmdline to specify `custom-config` with mac addresses, and apply patched
-ignition (it disable create-datastore and remove systemd dependencies at 
-capture-macs.sh unit) and the machince config with the OVS bridge setup.
+ignition (it disables create-datastore and removes systemd dependencies at 
+capture-macs.sh unit) and the machine config with the OVS bridge setup.
 
 Start the cluster
 ```bash
-./kcli/run.sh ./kcli/ocp.yaml openshift-pull.json
+make kcli-run-ocp
 ```
 
 Configure the bond with kubernetes-nmstate
 ```bash
-./kcli/add-slb.sh
+make kcli-add-slb
 ```
 
 Remove the bond with kubernetes-nmstate
 ```bash
-./kcli/del-slb.sh
+make kcli-del-slb
 ```
 
 To apply changes on already deployed cluster.
@@ -44,9 +44,9 @@ To apply changes on already deployed cluster.
 
 ### Start a RHCOS 4.10 image with ignition
 
-To do a quick test just for ingition + kernel cmdline is possible to start a 
-RHCOS image that will patch ignition and and start the image.
+To do a quick test just for ingition + kernel cmdline it is possible to start a 
+RHCOS image that will patch ignition and start the image.
 
 ```bash
-./kcli/run.sh ./kcli/rhcos.yaml openshift-pull.json
+make kcli-run-rhcos
 ```
