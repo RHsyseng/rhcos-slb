@@ -7,7 +7,7 @@ This guide explains how to bond specific NICs during the initial OpenShift insta
 This guide describes the customisations needed for installation when using a PXE server.
 
 ## Prerequisites
-- [Fcct](https://github.com/coreos/butane) software to be able to convert fcc to ign files.
+- [butane](https://github.com/coreos/butane) software to be able to convert fcc to ign files.
 - PXE server with ability to set kernel arguments.
 - Web accessible location (HTTP only) to upload the custome ign files.
 
@@ -21,28 +21,28 @@ macAddressList | String | List of MAC address should be set per host In the foll
 
 
 ### 2. Prepare the files
-- Base64 encode the `capture-macs.sh` file and paste the content into custom-config.fcc file into "base64_capture_macs_script_content" section. 
+- Create custom-config.ign and MCO manifests:
 
-    **TIP:** To update the content you can use:
-
-```
-export base64_capture_macs_script_content=$(cat capture-macs.sh|base64 -w 0) && envsubst <  custom-config.fcc.tmpl > custom-config.fcc
+```/bin/bash
+make build-manifests
 ```
 
-- Create the ign file from the custom-config.fcc: 
-```
-fcct custom-config.fcc > file.ign
-```
+    The manifest output will consist of:
+    1. ignition related files:
+      1.1 `custom-config.ign` - ignitions file that mainly consists of 2 scripts:
+      1.2 `capture-macs.sh` - retrieves interface MAC-Addresses from kargs and stores on local file.
+      1.3 `create-datastore.sh` - pre-configures the disk partitions.
+    2. mco related files:
+      2.1 `mco_ovs_supervisor.yml` - MCO (MachineConfig) files that run on the supervisor nodes.
+      2.2 `mco_ovs_worker.yml` - MCO (MachineConfig) files that run on the worker nodes.
+      2.3 `init-interfaces.sh` - pre-configures the interfaces according to their assigned MAC-Address.
+    3. kubernetes-nmstate related files:
+      3.1 `add-slb-nncp.yaml` - NNCP manifest that adds an ovs-bridge.
+      3.2 `del-slb-nncp.yaml` - NNCP manifest that removes the ovs-bridge.
 
-  - Upload `file.ign` to a shared location where the OpenShift nodes can access.
+- Upload `custom-config.ign` to a shared location which the OpenShift nodes can access.
 
-- Base64 encode the `init-interfaces.sh` file and paste the content into each MCO file into "base64_script_content" section. 
-
-    **TIP:** To update the content you can use:
-
-```
-export base64_script_content=$(cat init-interfaces.sh|base64 -w 0) && envsubst <  mco_ovs_workers.yml.tmpl > mco_ovs_workers.yml && envsubst < mco_ovs_supervisor.yml.tmpl > mco_ovs_supervisor.yml
-```
+- Apply MCO files manually once the cluster is up or add it to the installation automation/pipeline.
 
 ### 3. Run the installation
 - Follow the guide to install a bare-metal cluster in the [OpenShift production documentation.
@@ -62,7 +62,7 @@ The test downloads the latest RHCOS image and runs network related tests, checki
 You can run these tests manually on Fedora by running the test script:
 ```bash
 sudo ./tests/setup.sh
-./tests/test-coreos.sh
+make test
 ```
 
 ## Additional Documentation 
