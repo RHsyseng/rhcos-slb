@@ -169,7 +169,9 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 		base64.StdEncoding.EncodeToString([]byte(interfacesScript))))
 
 	options := platform.QemuMachineOptions{
-		SecondaryNics: 2,
+		MachineOptions: platform.MachineOptions{
+			AdditionalNics: 2,
+		},
 	}
 
 	var m platform.Machine
@@ -347,7 +349,9 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 	var err error
 
 	options := platform.QemuMachineOptions{
-		SecondaryNics: 2,
+		MachineOptions: platform.MachineOptions{
+			AdditionalNics: 2,
+		},
 	}
 
 	ignition_config, err := getUserData(c)
