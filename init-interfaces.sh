@@ -118,7 +118,7 @@ if eval ! is_con_exists "\"$secondary_connection_name\""; then
                 802-3-ethernet.mac-address $secondary_mac
 fi
 if eval ! is_con_active "\"$secondary_connection_name\""; then
-  nmcli con up "$secondary_connection_name"
+  nmcli con up "$secondary_connection_name" || /bin/true
 fi
 
 set_description "$primary_mac" "$default_device" primary
