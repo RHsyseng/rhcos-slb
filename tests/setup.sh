@@ -4,7 +4,7 @@ set -ex
 
 install_go() {
 	destination=/usr/local
-	version=1.16.8
+	version=1.18.7
 	tarball=go$version.linux-amd64.tar.gz
 	url=https://dl.google.com/go/
 
