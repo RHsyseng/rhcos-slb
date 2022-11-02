@@ -2,7 +2,7 @@
 
 set -ex
 
-RHCOS_SLB_REPO_URL=https://github.com/coreos/coreos-assembler.git
+COREOS_ASSEMBLER_REPO_URL=https://github.com/coreos/coreos-assembler.git
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
 TESTS_LIST=(rhcos.network.multiple-nics rhcos.network.init-interfaces-test)
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
@@ -265,7 +265,7 @@ setup_test_suite() {
   prepare_scripts_for_tests ${coreos_ci_scripts_path}
 }
 
-fetch_repo ${TMP_COREOS_ASSEMBLER_PATH} ${RHCOS_SLB_REPO_URL} main
+fetch_repo ${TMP_COREOS_ASSEMBLER_PATH} ${COREOS_ASSEMBLER_REPO_URL} main
 cd ${TMP_COREOS_ASSEMBLER_PATH}
 
 create_artifacts_path ${TMP_COREOS_ASSEMBLER_PATH}
