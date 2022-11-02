@@ -31,6 +31,7 @@ fetch_repo() {
 
   (
     cd ${destination}
+    git fetch --all
     git reset ${commit} --hard
   )
 }
