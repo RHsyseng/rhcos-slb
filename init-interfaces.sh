@@ -77,17 +77,17 @@ secondary_connection_name=""
 for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
   dev_mac=$(nmcli -g GENERAL.HWADDR dev show "$dev" | sed -e 's/\\//g' | tr '[:upper:]' '[:lower:]')
   case $dev_mac in
-    $primary_mac)
+    "${primary_mac}")
       default_device="$dev"
       default_connection_name=$(get_con_name_by_mac_or_device "$primary_mac" "$dev")
       ;;
-    $secondary_mac)
+    "${secondary_mac}")
       secondary_device="$dev"
       secondary_connection_name=$(get_con_name_by_mac_or_device "$secondary_mac" "$dev")
       ;;
     *)
       ;;
-   esac
+  esac
 done
 
 echo -e "default dev: $default_device (CONNECTION.NAME $default_connection_name)\nsecondary dev: $secondary_device (CONNECTION.NAME $secondary_connection_name)"
