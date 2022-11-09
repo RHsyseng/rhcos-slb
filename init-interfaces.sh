@@ -120,6 +120,12 @@ if eval ! is_con_exists "\"$secondary_connection_name\""; then
                 802-3-ethernet.mac-address "${secondary_mac}"
 fi
 if eval ! is_con_active "\"${secondary_connection_name}\""; then
+  nmcli con mod "${secondary_connection_name}" \
+                connection.interface-name "${secondary_device}" \
+                connection.autoconnect yes \
+                ipv4.method disabled \
+                ipv6.method disabled \
+                802-3-ethernet.mac-address "${secondary_mac}"
   nmcli con up "${secondary_connection_name}" || /bin/true
 fi
 
