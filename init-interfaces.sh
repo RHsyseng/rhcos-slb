@@ -42,16 +42,18 @@ set_description() {
   local mac=$1
   local nic=$2
   local description=$3
-  local cons=$(egrep -l -i "mac-address=$mac|interface-name=$nic" $(egrep -l "type=ethernet" /etc/NetworkManager/system-connections/*))
+  local cons=$(grep -REl "type=ethernet" /etc/NetworkManager/system-connections | xargs -I{} -- grep -El -i "mac-address=${mac}|interface-name=${nic}" "{}")
+  IFS=$'\n'
   for c in $cons; do
-      if ! grep nmstate.interface.description $c; then
-         echo "" >> $c
-         echo "[user]" >> $c
-         echo nmstate.interface.description=$description >> $c
+      if ! grep nmstate.interface.description "${c}"; then
+        echo "" >> "${c}"
+        echo "[user]" >> "${c}"
+        echo "nmstate.interface.description=${description}" >> "${c}"
       else
-         sed -i "s/nmstate\.interface\.description=.*/nmstate.interface.description=$description/" $c
+        sed -i "s/nmstate\.interface\.description=.*/nmstate.interface.description=$description/" "${c}"
       fi
-done
+  done
+  unset IFS
 }
 
 if [[ ! -f /boot/mac_addresses ]] ; then
