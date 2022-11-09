@@ -97,34 +97,34 @@ if [[ -z "$default_device" ]] || [[ -z "$secondary_device" ]]; then
 fi
 
 if eval ! is_con_exists "\"$default_connection_name\""; then
-  default_connection_name="$(generate_new_con_name "$default_device")" && export default_connection_name
+  default_connection_name="$(generate_new_con_name "${default_device}")" && export default_connection_name
   nmcli con add type ethernet \
-                conn.interface "$default_device" \
+                conn.interface "${default_device}" \
                 connection.autoconnect yes \
                 ipv4.method auto \
-                con-name "$default_connection_name" \
-                802-3-ethernet.mac-address $primary_mac
+                con-name "${default_connection_name}" \
+                802-3-ethernet.mac-address "${primary_mac}"
 fi
 if eval ! is_con_active "\"$default_connection_name\""; then
-  nmcli con up "$default_connection_name"
+  nmcli con up "${default_connection_name}"
 fi
 
 if eval ! is_con_exists "\"$secondary_connection_name\""; then
-  secondary_connection_name="$(generate_new_con_name "$secondary_device")" && export secondary_connection_name
+  secondary_connection_name="$(generate_new_con_name "${secondary_device}")" && export secondary_connection_name
   nmcli con add type ethernet \
-                conn.interface "$secondary_device" \
+                conn.interface "${secondary_device}" \
                 connection.autoconnect yes \
                 ipv4.method disabled \
                 ipv6.method disabled \
-                con-name "$secondary_connection_name" \
-                802-3-ethernet.mac-address $secondary_mac
+                con-name "${secondary_connection_name}" \
+                802-3-ethernet.mac-address "${secondary_mac}"
 fi
-if eval ! is_con_active "\"$secondary_connection_name\""; then
-  nmcli con up "$secondary_connection_name" || /bin/true
+if eval ! is_con_active "\"${secondary_connection_name}\""; then
+  nmcli con up "${secondary_connection_name}" || /bin/true
 fi
 
-set_description "$primary_mac" "$default_device" primary
-set_description "$secondary_mac" "$secondary_device" secondary
+set_description "${primary_mac}" "${default_device}" primary
+set_description "${secondary_mac}" "${secondary_device}" secondary
 
 nmcli c reload
 
