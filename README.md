@@ -25,6 +25,11 @@ macAddressList | String | List of MAC address should be set per host In the foll
 ```
 fcct custom-config.fcc > file.ign
 ```
+    **TIP:** To change the RHCOS sysroot partition size (currently set to 600G) you can use the following before creating the ign file:
+
+```
+sed -i -e "s/OFFSET=600G/OFFSET=120G/" custom-config.fcc
+```
 
   - Upload `file.ign` to a shared location which the OpenShift nodes can access.
 
