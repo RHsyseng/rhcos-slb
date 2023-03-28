@@ -4,6 +4,7 @@ set -ex
 
 COREOS_ASSEMBLER_REPO_URL=https://github.com/coreos/coreos-assembler.git
 COREOS_ASSEMBLER_REPO_BRANCH=origin/rhcos-4.13
+IMAGE_INSTALLER_BRANCH=release-4.13
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
 TESTS_LIST=(rhcos.network.multiple-nics rhcos.network.init-interfaces-test)
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
@@ -38,28 +39,36 @@ fetch_repo() {
 
 fetch_latest_rhcos_image() {
   local image_path=$1
-  local image_url="https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest"
-  local latest_image_gz=$(curl ${image_url}/ | grep -Po "rhcos-([[:digit:]]).([[:digit:]]){1,2}.([[:digit:]]{1,2})-x86_64-qemu.x86_64.qcow2.gz" | head -1)
-  if [[ -z "${latest_image_gz}" ]]; then
-    echo failed to get the latest image name. check url and regex
+  local installer_image_branch=$2
+  local image_menu_url="https://raw.githubusercontent.com/openshift/installer/${installer_image_branch}/data/data/coreos/rhcos.json"
+  local image_menu="rhcos.json"
+  mkdir -p "${image_path}"
+  wget -nv -O "${image_path}/${image_menu}" "${image_menu_url}"
+
+  local image_gz_url
+  image_gz_url=$(< "${image_path}/${image_menu}" docker run --rm -i stedolan/jq '.architectures.x86_64.artifacts.qemu.formats["qcow2.gz"].disk.location' | tr -d '"')
+  if [[ -z "${image_gz_url}" ]]; then
+    echo "failed to get the image.gz name. check url and json path"
     exit 1
   fi
-  local image_name=${latest_image_gz%.gz}
+  local image_gz_name
+  image_gz_name=$(basename "${image_gz_url}")
+  local image_name
+  image_name=${image_gz_name%.gz}
 
-  local shasum=$(curl ${image_url}/sha256sum.txt | grep ${latest_image_gz} | awk '{print $1;}')
-  if [[ -z "${shasum}" ]]; then
-    echo failed to get the latest image shasum. check url and regex
+  local gz_shasum
+  gz_shasum=$(< "${image_path}/${image_menu}" docker run --rm -i stedolan/jq '.architectures.x86_64.artifacts.qemu.formats["qcow2.gz"].disk.sha256' | tr -d '"')
+  if [[ -z "${gz_shasum}" ]]; then
+    echo "failed to get the latest image shasum. check url and json path"
     exit 1
   fi
-
-  if [[ $(echo "${shasum} ${image_path}/${latest_image_gz}" | sha256sum --check) != "${image_path}/${latest_image_gz}: OK" ]]; then
-    mkdir -p ${image_path}
-    rm -rf ${image_path}/*
-    wget -nv -O ${image_path}/${latest_image_gz} ${image_url}/${latest_image_gz}
+  if [[ $(echo "${gz_shasum} ${image_path}/${image_gz_name}" | sha256sum --check) != "${image_path}/${image_gz_name}: OK" ]]; then
+    rm -rf "${image_path:?}"/*
+    wget -nv -O "${image_path}/${image_gz_name}" "${image_gz_url}"
   fi
 
-  gzip -dk --force ${image_path}/${latest_image_gz}
-  echo ${image_path}/${image_name}
+  gzip -dk --force "${image_path}/${image_gz_name}"
+  echo "${image_path}/${image_name}"
 }
 
 prepare_ignition() {
@@ -273,7 +282,7 @@ cd ${TMP_COREOS_ASSEMBLER_PATH}
 create_artifacts_path ${TMP_COREOS_ASSEMBLER_PATH}
 trap teardown EXIT SIGINT SIGTERM
 
-latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH})
+latest_image=$(fetch_latest_rhcos_image ${IMAGE_PATH} ${IMAGE_INSTALLER_BRANCH})
 
 setup_test_suite
 
