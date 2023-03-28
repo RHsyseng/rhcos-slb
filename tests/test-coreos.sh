@@ -3,7 +3,7 @@
 set -ex
 
 COREOS_ASSEMBLER_REPO_URL=https://github.com/coreos/coreos-assembler.git
-COREOS_ASSEMBLER_REPO_BRANCH=origin/rhcos-4.11
+COREOS_ASSEMBLER_REPO_BRANCH=origin/rhcos-4.13
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
 TESTS_LIST=(rhcos.network.multiple-nics rhcos.network.init-interfaces-test)
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
@@ -88,8 +88,8 @@ replace_network_tests() {
 }
 
 generate_junit_from_tap_file() {
-  local output_path_relative_to_mantle=$1
-  npx tap-junit --pretty -i ${output_path_relative_to_mantle}/test.tap -o _kola_temp -n "junit.xml" || true
+  local output_path=$1
+  npx tap-junit --pretty -i "${output_path}"/test.tap -o _kola_temp -n "junit.xml" || true
 }
 
 print_test_results() {
@@ -115,7 +115,7 @@ run_tests() {
 run_test_suite() {
   local latest_image=$1
 
-  cd mantle && make >/dev/null
+  make mantle >/dev/null
   test_output=${TMP_COREOS_ASSEMBLER_PATH}/tests_output
   run_tests ${latest_image} ${test_output} || true
 
@@ -128,7 +128,7 @@ run_test_suite() {
 
 teardown() {
   echo "Copying test artifacts to ${ARTIFACTS}"
-  cp -r ${TMP_COREOS_ASSEMBLER_PATH}/mantle/_kola_temp/* ${ARTIFACTS} || true
+  cp -r ${TMP_COREOS_ASSEMBLER_PATH}/_kola_temp/* ${ARTIFACTS} || true
 }
 
 copy_segment_interfaces_systemd_units_contents() {
@@ -258,7 +258,7 @@ prepare_scripts_for_tests() {
 }
 
 setup_test_suite() {
-  local coreos_ci_scripts_path=${TMP_COREOS_ASSEMBLER_PATH}/mantle/rhcos-scripts
+  local coreos_ci_scripts_path=${TMP_COREOS_ASSEMBLER_PATH}/rhcos-scripts
 
   replace_network_tests "${RHCOS_SLB_REPO_PATH}"/tests/network.go "${TMP_COREOS_ASSEMBLER_PATH}"/"${RHCOS_SLB_TEST_PATH}"
 
