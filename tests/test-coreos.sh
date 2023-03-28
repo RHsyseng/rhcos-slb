@@ -3,8 +3,9 @@
 set -ex
 
 COREOS_ASSEMBLER_REPO_URL=https://github.com/coreos/coreos-assembler.git
-COREOS_ASSEMBLER_REPO_BRANCH=origin/rhcos-4.13
-IMAGE_INSTALLER_BRANCH=release-4.13
+OPENSHIFT_VERSION=${OPENSHIFT_VERSION:-"4.13"}
+COREOS_ASSEMBLER_REPO_BRANCH=${COREOS_ASSEMBLER_REPO_BRANCH:-"origin/rhcos-${OPENSHIFT_VERSION}"}
+IMAGE_INSTALLER_BRANCH=${IMAGE_INSTALLER_BRANCH:-"release-${OPENSHIFT_VERSION}"}
 RHCOS_SLB_TEST_PATH=mantle/kola/tests/misc/network.go
 TESTS_LIST=(rhcos.network.multiple-nics rhcos.network.init-interfaces-test)
 TMP_COREOS_ASSEMBLER_PATH=$(mktemp -d -u -p /tmp -t coreos-assembler-XXXXXX)
