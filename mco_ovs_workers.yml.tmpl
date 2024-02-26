@@ -12,8 +12,8 @@ spec:
       units:
         - contents: |
             [Unit]
-            Before=kubelet.service
-            After=NetworkManager.service
+            Before=ovs-configuration.service
+            After=NetworkManager-wait-online.service
             [Service]
             Type=oneshot
             ExecStart=/bin/sh /var/init-interfaces.sh
