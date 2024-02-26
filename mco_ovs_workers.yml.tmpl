@@ -12,15 +12,26 @@ spec:
       units:
         - contents: |
             [Unit]
-            Before=kubelet.service
-            After=NetworkManager.service
+            Before=ovs-configuration.service
+            After=NetworkManager-wait-online.service
             [Service]
             Type=oneshot
-            ExecStart=/bin/sh /var/init-interfaces.sh
+            ExecStart=/bin/sh /var/init-interfaces.sh create_bondcnv
             [Install]
             WantedBy=multi-user.target
-          name: setup-ovs.service
+          name: create-bondcnv.service
           enabled: true
+        - contents: |
+            [Unit]
+            After=ovs-configuration.service
+            [Service]
+            Type=oneshot
+            ExecStart=/bin/sh /var/init-interfaces.sh create_cnvnet
+            [Install]
+            WantedBy=multi-user.target
+          name: create-cnvnet.service
+          enabled: true
+
     storage:
       files:
         - contents:
