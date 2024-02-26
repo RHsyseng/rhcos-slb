@@ -7,8 +7,6 @@ storage:
       mode: 420
       contents:
         inline: |
-          [Match]
-          OriginalName=*
           [Link]
           NamePolicy=mac
           MACAddressPolicy=persistent
@@ -18,7 +16,6 @@ storage:
         inline: |
           [main]
           no-auto-default=*
-          dhcp=dhclient
     - path: /usr/local/bin/capture-macs
       mode: 0755
       contents:

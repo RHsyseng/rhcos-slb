@@ -1,0 +1,16 @@
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: cnvnet
+spec:
+  config: |2
+    {
+            "cniVersion": "0.3.1",
+            "name": "cnvnet",
+            "type": "ovn-k8s-cni-overlay",
+            "topology": "localnet",
+            "vlan": 20,
+            "netAttachDefName": "default/cnvnet"
+    }
+
