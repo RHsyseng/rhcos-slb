@@ -1,7 +1,7 @@
 # Setting up network bonding on specific interfaces during the ignition process
 
 ## Overview 
-This guide explains how to bond specific NICs during the initial OpenShift installation with OVS and supplies the Ignition and scripts to achieve this.
+This guide explains how to bond specific NICs during the initial OpenShift installation with as linux bond and supplies the Ignition and scripts to achieve this.
 
 ## Important
 This guide describes the customisations needed for installation when using a PXE server.
@@ -36,9 +36,6 @@ make build-manifests
       2.1 `mco_ovs_supervisor.yml` - MCO (MachineConfig) files that run on the supervisor nodes.
       2.2 `mco_ovs_worker.yml` - MCO (MachineConfig) files that run on the worker nodes.
       2.3 `init-interfaces.sh` - pre-configures the interfaces according to their assigned MAC-Address.
-    3. kubernetes-nmstate related files:
-      3.1 `add-slb-nncp.yaml` - NNCP manifest that adds an ovs-bridge.
-      3.2 `del-slb-nncp.yaml` - NNCP manifest that removes the ovs-bridge.
 
 - Upload `custom-config.ign` to a shared location which the OpenShift nodes can access.
 
@@ -48,13 +45,8 @@ make build-manifests
 - Follow the guide to install a bare-metal cluster in the [OpenShift production documentation.
 ](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.7/html/installing/installing-on-bare-metal)
 
-### 4. Apply the kubernetes-nmstate NNCP Bond configuration
-- Create bond by adding a NNCP with `oc apply -f add-slb-nncp.yaml`
-
 ## Notes
-- Basic network configuration is set with the `init-interfaces.sh` file, which run via MCO files. MCO files are MachineConfig, which you can apply manually once the cluster is up or add it to the installation automation/pipeline. MachineConfig file is a "Day 2" tool that allows to configure or run scripts on a machine with an installed OS (post-installation).
-- To delete the bond run `oc delete nncp --all && oc apply -f del-slb-nncp.yaml`.
-- The add-slb-nncp.yaml and del-slb-nncp.yaml can be found at this repository.
+- The network configuration is set with the `init-interfaces.sh` file, which run via MCO files. MCO files are MachineConfig, which you can apply manually once the cluster is up or add it to the installation automation/pipeline. MachineConfig file is a "Day 2" tool that allows to configure or run scripts on a machine with an installed OS (post-installation).
 
 ## CI and Testing
 This repo uses [coreos-assembler repo](https://github.com/coreos/coreos-assembler) to run important scenarios relevant to this use-case.
@@ -66,7 +58,7 @@ make test
 ```
 
 ## Additional Documentation 
- - [Redhat CoreOS (RHCORS) features including ignition and machineConfig explanation](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.7/html/architecture/architecture-rhcos)
+ - [Redhat CoreOS (RHCORS) features including ignition and machineConfig explanation](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.14/html/architecture/architecture-rhcos)
 
 - [Understanding Machine Config](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.7/html/post-installation_configuration/post-install-machine-configuration-tasks)
 
