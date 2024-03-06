@@ -15,8 +15,25 @@ build_custom_config() {
 
 	# Paste the content into custom-config.fcc
 	envsubst \$base64_capture_macs_script_content,\$base64_create_datastore_script_content <  custom-config.fcc.tmpl > "${output_fcc}"
+    if [ "${SNO_VERSION}" != "" ]; then
+        build_sno_custom_config $output_fcc
+    fi
+    docker run -i --rm quay.io/coreos/butane:release --pretty < "${output_fcc}" > "${output_ign}"
+}
 
-  docker run -i --rm quay.io/coreos/butane:release --pretty < "${output_fcc}" > "${output_ign}"
+build_sno_custom_config() {
+    local output_fcc=$1
+    local sno_output_dir=${OUT_DIR}/sno
+    
+    # Generate the original-master.ign from repo's customization
+    mkdir -p ${sno_output_dir}
+    cp "${output_fcc}" ${sno_output_dir}/original-master.fcc
+    docker run -i --rm quay.io/coreos/butane:release --pretty < ${sno_output_dir}/original-master.fcc > ${sno_output_dir}/original-master.ign
+    
+    # The template has a "merge oringla-master.ign" directive so
+    # just copy it
+    local master_update_fcc_url=https://github.com/openshift/installer/raw/release-${SNO_VERSION}/data/data/bootstrap/bootstrap-in-place/files/opt/openshift/bootstrap-in-place/master-update.fcc
+    curl -L "$master_update_fcc_url" > ${sno_output_dir}/master-update.fcc
 }
 
 build_mco() {
