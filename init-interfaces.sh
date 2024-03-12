@@ -13,7 +13,7 @@ read_mac() {
 
 find_interface_by_mac() {
   local mac=$1
-  nmstatectl show --json |jq -r ".interfaces[] | select(.\"mac-address\"==\"$mac\").name"
+  nmstatectl show --json |jq -r ".interfaces[] | select(.\"mac-address\"==\"$mac\") | select(.\"type\"==\"ethernet\").name"
 }
 
 create_cnvnet() {
@@ -50,6 +50,12 @@ create_bondcnv() {
 # [2] https://github.com/openshift/machine-config-operator/pull/4212
   nmstatectl apply << EOF
 interfaces:
+- name: br-ex
+  type: ovs-interface
+  state: absent
+- name: br-ex
+  type: ovs-bridge
+  state: absent
 - name: bondcnv
   type: bond
   state: up
