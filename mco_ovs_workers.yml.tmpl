@@ -28,3 +28,9 @@ spec:
           filesystem: root
           mode: 484
           path: /var/init-interfaces.sh
+        - contents:
+            compression: ""
+            source: data:,%5BMatch%5D%0ADriver%3Dopenvswitch%0A%5BLink%5D%0AMACAddressPolicy%3Dnone%0A
+          mode: 420
+          overwrite: true
+          path: /etc/systemd/network/50-ovs-mac-policy-none.link
