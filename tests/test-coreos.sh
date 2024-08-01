@@ -47,7 +47,7 @@ fetch_latest_rhcos_image() {
   wget -nv -O "${image_path}/${image_menu}" "${image_menu_url}"
 
   local image_gz_url
-  image_gz_url=$(< "${image_path}/${image_menu}" docker run --rm -i stedolan/jq '.architectures.x86_64.artifacts.qemu.formats["qcow2.gz"].disk.location' | tr -d '"')
+  image_gz_url=$(< "${image_path}/${image_menu}" docker run --rm -i ghcr.io/jqlang/jq:latest '.architectures.x86_64.artifacts.qemu.formats["qcow2.gz"].disk.location' | tr -d '"')
   if [[ -z "${image_gz_url}" ]]; then
     echo "failed to get the image.gz name. check url and json path"
     exit 1
@@ -58,7 +58,7 @@ fetch_latest_rhcos_image() {
   image_name=${image_gz_name%.gz}
 
   local gz_shasum
-  gz_shasum=$(< "${image_path}/${image_menu}" docker run --rm -i stedolan/jq '.architectures.x86_64.artifacts.qemu.formats["qcow2.gz"].disk.sha256' | tr -d '"')
+  gz_shasum=$(< "${image_path}/${image_menu}" docker run --rm -i ghcr.io/jqlang/jq:latest '.architectures.x86_64.artifacts.qemu.formats["qcow2.gz"].disk.sha256' | tr -d '"')
   if [[ -z "${gz_shasum}" ]]; then
     echo "failed to get the latest image shasum. check url and json path"
     exit 1
