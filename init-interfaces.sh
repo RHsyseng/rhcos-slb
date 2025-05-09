@@ -42,7 +42,7 @@ set_description() {
   local mac=$1
   local nic=$2
   local description=$3
-  local connections=$(grep -REl "type=ethernet" /etc/NetworkManager/system-connections | xargs -I{} -- grep -El -i "mac-address=${mac}|interface-name=${nic}" "{}")
+  local connections=$(grep -REl "type=.*ethernet" /etc/NetworkManager/system-connections | xargs -I{} -- grep -El -i "mac-address=${mac}|interface-name=${nic}" "{}")
   IFS=$'\n'
   for connection in ${connections}; do
       if ! grep nmstate.interface.description "${connection}"; then
