@@ -128,7 +128,13 @@ expect_tests_to_succeed() {
 run_tests() {
   local latest_image=$1
   local test_output=$2
-  ./bin/kola run -b rhcos --qemu-image "${latest_image}" "${TESTS_LIST[@]}" >"${test_output}"
+
+  # Capture both stdout & stderr so we keep the _kola_temp path.
+  # Non-zero exit is fine – we parse results later.
+  ./bin/kola run \
+      -b rhcos --platform qemu \
+      --qemu-image "${latest_image}" \
+      "${TESTS_LIST[@]}" 2>&1 | tee "${test_output}"
 }
 
 run_test_suite() {
@@ -136,7 +142,7 @@ run_test_suite() {
 
   make mantle >/dev/null
   test_output=${TMP_COREOS_ASSEMBLER_PATH}/tests_output
-  run_tests ${latest_image} ${test_output} || true
+  run_tests "${latest_image}" "${test_output}" || true
 
   scratch_dir=$(grep -o '_kola_temp[^"]*' "${test_output}" | head -n1)
   generate_junit_from_tap_file "${scratch_dir}"
@@ -148,7 +154,9 @@ run_test_suite() {
 
 teardown() {
   echo "Copying test artifacts to ${ARTIFACTS}"
-  cp -r ${TMP_COREOS_ASSEMBLER_PATH}/_kola_temp/* ${ARTIFACTS} || true
+  shopt -s nullglob
+  cp -r "${TMP_COREOS_ASSEMBLER_PATH}"/_kola_temp/* "${ARTIFACTS}" 2>/dev/null || true
+  shopt -u nullglob
 }
 
 copy_segment_interfaces_systemd_units_contents() {
