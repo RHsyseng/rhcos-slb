@@ -5,7 +5,6 @@ on:
     branches: [ simplify-networking ]
   pull_request:
     branches: [ simplify-networking ]
-
   workflow_dispatch:
 
 jobs:
@@ -14,7 +13,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
       - name: Set up dependencies
         run: |
           sudo add-apt-repository ppa:smoser/swtpm
@@ -24,15 +24,16 @@ jobs:
           sudo systemctl start docker
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: 1.18
 
       - name: Run the test
         run: ARTIFACTS=~/test_artifacts COSA_NO_KVM=yes ./tests/test-coreos.sh
+
       - name: Upload artifact
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: artifacts
           path: ~/test_artifacts
