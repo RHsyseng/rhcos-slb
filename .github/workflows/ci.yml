@@ -10,16 +10,16 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up dependencies
         run: |
-          sudo add-apt-repository ppa:smoser/swtpm
           sudo apt-get update
-          sudo apt-get install qemu qemu-system-x86 qemu-utils npm swtpm
+          sudo apt-get install -y \
+            qemu-system-x86 qemu-utils swtpm swtpm-tools npm
           sudo npm i -D tap-junit
           sudo systemctl start docker
 
