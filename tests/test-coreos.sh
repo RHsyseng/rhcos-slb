@@ -98,8 +98,17 @@ replace_network_tests() {
 }
 
 generate_junit_from_tap_file() {
-  local output_path=$1
-  npx tap-junit --pretty -i "${output_path}"/test.tap -o _kola_temp -n "junit.xml" || true
+  local scratch_dir=$1   # e.g. /tmp/.../_kola_temp/abcd1234
+
+  if [[ -z "${scratch_dir}" || ! -s "${scratch_dir}/test.tap" ]]; then
+    echo "⚠️  No TAP file found – skipping JUnit conversion"
+    return
+  fi
+
+  tap-junit --pretty \
+            -i "${scratch_dir}/test.tap" \
+            -o "${scratch_dir}" \
+            -n junit.xml
 }
 
 print_test_results() {
@@ -129,7 +138,8 @@ run_test_suite() {
   test_output=${TMP_COREOS_ASSEMBLER_PATH}/tests_output
   run_tests ${latest_image} ${test_output} || true
 
-  generate_junit_from_tap_file "$(grep -o '_kola_temp/[[:print:]]*' ${test_output})"
+  scratch_dir=$(grep -o '_kola_temp[^"]*' "${test_output}" | head -n1)
+  generate_junit_from_tap_file "${scratch_dir}"
 
   print_test_results ${test_output}
 
