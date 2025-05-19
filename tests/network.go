@@ -30,26 +30,32 @@ import (
 )
 
 func init() {
+	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	register.RegisterTest(&register.Test{
-		Run:         NetworkSecondaryNics,
+		Run:         NetworkAdditionalNics,
 		ClusterSize: 0,
 		Name:        "rhcos.network.multiple-nics",
-		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Description: "Verify configuring networking with multiple NICs work.",
 		Timeout:     20 * time.Minute,
+		Distros:     []string{"rhcos"},
+		Platforms:   []string{"qemu"},
 	})
+	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
+	// with a slight change, where the script originally run by MCO is run from
+	// ignition: https://github.com/RHsyseng/rhcos-slb/blob/161a421f8fdcdb4b08fb6366daa8fe1b75cbe095/init-interfaces.sh.
 	register.RegisterTest(&register.Test{
 		Run:         InitInterfacesTest,
 		ClusterSize: 0,
 		Name:        "rhcos.network.init-interfaces-test",
-		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Description: "Verify init-interfaces script works in both fresh setup and reboot.",
 		Timeout:     40 * time.Minute,
+		Distros:     []string{"rhcos"},
+		Platforms:   []string{"qemu"},
 	})
 }
 
-// NetworkSecondaryNics verifies that secondary NICs are created on the node
-func NetworkSecondaryNics(c cluster.TestCluster) {
+// NetworkAdditionalNics verifies that additional NICs are created on the node
+func NetworkAdditionalNics(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
 	secondaryMac := "52:55:00:d1:56:01"
 
@@ -77,9 +83,9 @@ func InitInterfacesTest(c cluster.TestCluster) {
 		c.Fatalf("failed when no connections are configured: %v", err)
 	}
 
-	err = simulateNodeReboot(c, m)
+	err = m.Reboot()
 	if err != nil {
-		c.Fatalf("failed to simulate Node reboot: %v", err)
+		c.Fatalf("failed to reboot Node: %v", err)
 	}
 	err = checkExpectedInterfaces(c, m, primaryMac, secondaryMac)
 	if err != nil {
@@ -295,10 +301,7 @@ func checkExpectedInterfacesStatus(c cluster.TestCluster, m platform.Machine, ma
 }
 
 func isConnectionUp(c cluster.TestCluster, m platform.Machine, connectionName string) bool {
-	if getConnectionStatus(c, m, connectionName) != "activated" {
-		return false
-	}
-	return true
+	return getConnectionStatus(c, m, connectionName) == "activated"
 }
 
 func getConnectionStatus(c cluster.TestCluster, m platform.Machine, connectionName string) string {
@@ -328,10 +331,7 @@ func checkExpectedInterfacesIPAddress(c cluster.TestCluster, m platform.Machine,
 }
 
 func isConnectionIpv4Enabled(c cluster.TestCluster, m platform.Machine, connectionName string) bool {
-	if getConnectionIpv4Addresses(c, m, connectionName) == "" {
-		return false
-	}
-	return true
+	return getConnectionIpv4Addresses(c, m, connectionName) != ""
 }
 
 func getConnectionIpv4Addresses(c cluster.TestCluster, m platform.Machine, connectionName string) string {
